@@ -1,0 +1,11 @@
+pkgname=material-shell-backlight
+pkgver=1.0
+pkgrel=1
+pkgdesc='Material Shell Backlight Dependencies'
+arch=(any)
+license=(None)
+depends=(
+  geoclue
+  brightnessctl
+  ddcutil
+)

@@ -1,0 +1,14 @@
+pkgname=material-shell-audio
+pkgver=1.0
+pkgrel=2
+pkgdesc='Material Shell Audio Dependencies'
+arch=(any)
+license=(None)
+depends=(
+  cava
+  pwvucontrol
+  wireplumber
+  pipewire-pulse
+  libdbusmenu-gtk3
+  playerctl
+)

@@ -1,0 +1,35 @@
+pkgname=google-sans-mono
+pkgver=1.0
+pkgrel=1
+pkgdesc='Google Sans Mono'
+arch=(any)
+license=(None)
+url="https://github.com/rafahgm/google-sans-mono"
+_commit="2535d60dba86fb711a4a87516de136b8cae92279"
+
+source=(
+    "${url}/raw/${_commit}/Google-Sans-Mono-Bold.ttf"
+    "${url}/raw/${_commit}/Google-Sans-Mono-Italic-Bold.ttf"
+    "${url}/raw/${_commit}/Google-Sans-Mono-Italic-Medium.ttf"
+    "${url}/raw/${_commit}/Google-Sans-Mono-Italic-SemiBold.ttf"
+    "${url}/raw/${_commit}/Google-Sans-Mono-Italic.ttf"
+    "${url}/raw/${_commit}/Google-Sans-Mono-Medium.ttf"
+    "${url}/raw/${_commit}/Google-Sans-Mono-Regular.ttf"
+    "${url}/raw/${_commit}/Google-Sans-Mono-SemiBold.ttf"
+)
+
+sha256sums=(
+    '9b3cdda5882f2ba0549b60c9dba2f7f711ef7d2c46158357a3f1e92350b8bcee'
+    '4fe613bcf2100da78a1e46475ee5f56964a911a84c7e5b09a9c9a754fdedc3e6'
+    'e091cba8df8e6db213e1d120789f83356823acc60caca3db2dcc91ea242087f4'
+    '49598530de0f804799684089e83f783c6652f73558a2f9db12c72cb81cf9c044'
+    '92a1739e8163b1c35fb84b991b3cb710ed2a8caad5fd3e4f27a92a02d65a0c26'
+    'bb94e35dc8fce637f58b4c94cee167fcbcafee95e51a0229501f0fc92f4540be'
+    '1a3c61f3471558a6b150f67a0cc27c2ab830cb99cf29ed71ecf0f9b3b1bef381'
+    '235d3d02f18dfa4fd145755df59ccecbdd0a4dc81747b307d586a8e0d1dc8099'
+)
+
+package() {
+    install -d "${pkgdir}/usr/share/fonts/TTF"
+    install -m644 "$srcdir"/*.ttf "${pkgdir}/usr/share/fonts/TTF/"
+}

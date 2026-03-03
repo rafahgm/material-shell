@@ -1,0 +1,11 @@
+pkgname=material-shell-toolkit
+pkgver=1.0
+pkgrel=2
+pkgdesc='Material Shell Toolkit Dependencies'
+arch=(any)
+license=(None)
+depends=(
+  upower
+  wtype
+  ydotool
+)

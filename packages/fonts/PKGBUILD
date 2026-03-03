@@ -1,0 +1,27 @@
+pkgname=material-shell-fonts-themes
+pkgver=1.0
+pkgrel=5
+pkgdesc='Material Shell Fonts and Theming Dependencies'
+arch=(any)
+license=(None)
+depends=(
+  adw-gtk-theme-git
+  fontconfig
+  matugen
+  otf-space-grotesk
+  noto-fonts
+  noto-fonts-extra
+  noto-fonts-emoji
+  noto-fonts-cjk
+  gnu-free-fonts
+  ttf-liberation
+  ttf-dejavu
+  maplemono-nf-unhinted
+  ttf-google-sans
+  ttf-space-mono-nerd
+  ttf-jetbrains-mono-nerd
+  ttf-material-symbols-variable-git
+  ttf-readex-pro
+  ttf-rubik-vf
+  ttf-twemoji
+)

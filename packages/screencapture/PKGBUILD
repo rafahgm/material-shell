@@ -1,0 +1,12 @@
+pkgname=material-shell-screencapture
+pkgver=1.0
+pkgrel=1
+pkgdesc='Material Shell Screenshot and Recording Dependencies'
+arch=(any)
+license=(None)
+depends=(
+  hyprshot
+  slurp
+  swappy
+  wf-recorder
+)

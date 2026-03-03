@@ -18,11 +18,25 @@ Item {
         anchors.centerIn: parent
         spacing: 4
 
-        StyledText {
-            font.pixelSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnLayer1
-            text: root.verbose ? DateTimeService.time : DateTimeService.shortTime
+        Item {
+            Layout.alignment: Qt.AlignVCenter
+            implicitWidth: timeTextMetric.width
+            implicitHeight: timeText.implicitHeight
+
+            TextMetrics {
+                id: timeTextMetric
+                text: root.verbose ? "22:22:21" : "22:21"
+                font.pixelSize: Appearance.font.pixelSize.large
+            }
+
+            StyledText {
+                id: timeText
+                font.pixelSize: Appearance.font.pixelSize.large
+                color: Appearance.colors.colOnLayer1
+                text: root.verbose ? DateTimeService.time : DateTimeService.shortTime
+            }
         }
+        
 
         StyledText {
             visible: root.verbose

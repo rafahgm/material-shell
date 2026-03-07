@@ -9,15 +9,6 @@ install-yay(){
   rm -rf /tmp/buildyay
 }
 
-remove_deprecated_dependencies(){
-  printf "${STY_CYAN}[$0]: Removing deprecated dependencies:${STY_RST}\n"
-  local list=()
-  list+=(hyprland-qtutils)
-  list+=({quickshell,hyprutils,hyprpicker,hyprlang,hypridle,hyprland-qt-support,hyprland-qtutils,hyprlock,xdg-desktop-portal-hyprland,hyprcursor,hyprwayland-scanner,hyprland}-git)
-  list+=(matugen-bin)
-  for i in ${list[@]};do try sudo pacman --noconfirm -Rdd $i;done
-}
-
 if ! command -v pacman >/dev/null 2>&1; then
   printf "${STY_RED}[$0]: pacman not found, it seems that the system is not ArchLinux or Arch-based distros. Aborting...${STY_RST}\n"
   exit 1
@@ -27,9 +18,6 @@ fi
 if [[ -z "${PACMAN_AUTH:-}" ]]; then
   export PACMAN_AUTH="sudo"
 fi
-
-showfun remove_deprecated_dependencies
-v remove_deprecated_dependencies
 
 # Issue #363
 case $SKIP_SYSUPDATE in

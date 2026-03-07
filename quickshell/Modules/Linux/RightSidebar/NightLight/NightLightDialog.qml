@@ -18,11 +18,11 @@ WindowDialog {
     backgroundHeight: 600
 
     WindowDialogTitle {
-        text: Translation.tr("Eye protection")
+        text: TranslationService.tr("Eye protection")
     }
     
     WindowDialogSectionHeader {
-        text: Translation.tr("Night Light")
+        text: TranslationService.tr("Night Light")
     }
 
     WindowDialogSeparator {

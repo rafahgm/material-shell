@@ -38,7 +38,7 @@ DialogListItem {
                 Layout.fillWidth: true
                 color: Appearance.colors.colOnSurfaceVariant
                 elide: Text.ElideRight
-                text: root.wifiNetwork?.ssid ?? Translation.tr("Unknown")
+                text: root.wifiNetwork?.ssid ?? TranslationService.tr("Unknown")
                 textFormat: Text.PlainText
             }
             MaterialSymbol {

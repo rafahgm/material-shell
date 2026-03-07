@@ -12,16 +12,8 @@ Singleton {
     id: root
     // 10 minute
     readonly property int fetchInterval: Config.options.bar.weather.fetchInterval * 60 * 1000
-    readonly property string city: Config.options.bar.weather.city
-    readonly property bool useUSCS: Config.options.bar.weather.useUSCS
-    property bool gpsActive: Config.options.bar.weather.enableGPS
-
-    onUseUSCSChanged: {
-        root.getData();
-    }
-    onCityChanged: {
-        root.getData();
-    }
+    readonly property string lat: Config.options.bar.weather.lat
+    readonly property string lon: Config.options.bar.weather.lon
 
     property var location: ({
         valid: false,

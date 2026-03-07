@@ -223,11 +223,10 @@ Singleton {
                     property bool useNerdFont: false
                 }
                 property JsonObject weather: JsonObject {
-                    property bool enable: false
-                    property bool enableGPS: true // gps based location
-                    property string city: "" // When 'enableGPS' is false
-                    property bool useUSCS: false // Instead of metric (SI) units
+                    property string openweatherApiKey: ""
                     property int fetchInterval: 10 // minutes
+                    property real lat: 0
+                    property real lon: 0
                 }
                 property JsonObject indicators: JsonObject {
                     property JsonObject notifications: JsonObject {

@@ -313,7 +313,6 @@ Item {
             // Weather
             Loader {
                 Layout.leftMargin: 4
-                active: Config.options.bar.weather.enable
 
                 sourceComponent: BarGroup {
                     Weather {}

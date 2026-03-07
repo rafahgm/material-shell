@@ -1,0 +1,12 @@
+pkgname=material-shell-portal
+pkgver=1.0
+pkgrel=2
+pkgdesc='Material Shell XDG Desktop Portals'
+arch=(any)
+license=(None)
+depends=(
+  xdg-desktop-portal
+  xdg-desktop-portal-gtk
+  xdg-desktop-portal-gnome
+  gnome-keyring
+)

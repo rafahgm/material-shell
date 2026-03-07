@@ -1,10 +1,12 @@
 pkgname=material-shell-basic
 pkgver=1.0
-pkgrel=2
+pkgrel=1
 pkgdesc='Material-Shell Basic Dependencies'
 arch=(any)
 license=(None)
 depends=(
+  niri
+  sddm-git
   bc
   coreutils
   cliphist
@@ -14,12 +16,19 @@ depends=(
   ripgrep
   jq
   xdg-user-dirs
-  gnome-keyring
   neovim
   python-pynvim
   wl-clipboard
   kitty
   fish
   libappindicator-gtk3
-  nwg-looks
+  nwg-look
+  pacman-contrib
+  wlsunset
+  polkit
+  polkit-gnome
+  networkmanager
+  nautilus
+  xwayland-satellite
+  bun
 )

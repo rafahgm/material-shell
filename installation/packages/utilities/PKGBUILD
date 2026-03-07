@@ -1,0 +1,13 @@
+pkgname=material-shell-utilities
+pkgver=1.0
+pkgrel=1
+pkgdesc='Material-Shell Basic Utilities'
+arch=(any)
+license=(None)
+depends=(
+	zen-browser-bin
+	spotify
+	visual-studio-code-bin
+	termius
+	1password
+)

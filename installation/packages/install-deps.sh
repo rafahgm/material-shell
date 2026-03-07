@@ -54,10 +54,7 @@ install-local-pkgbuild() {
 }
 
 # Install core dependencies from the meta-packages
-metapkgs=(./installation/packages/{audio,backlight,basic,fonts-themes,portal,screencapture,toolkit,widgets})
-metapkgs+=(./installation/packages/quickshell)
-[[ -f /usr/share/icons/Bibata-Modern-Classic/index.theme ]] || \
-  metapkgs+=(./installation/packages/illogical-impulse-bibata-modern-classic-bin)
+metapkgs=(./installation/packages/{audio,backlight,basic,fonts-themes,portal,screencapture,toolkit,widgets,quickshell,utilities})
 
 for i in "${metapkgs[@]}"; do
   metainstallflags="--needed"

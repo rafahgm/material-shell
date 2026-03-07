@@ -18,6 +18,7 @@ else
     v sudo systemctl --machine=$(whoami)@.host --user enable ydotool --now
 fi
 
+v sudo chsh /usr/bin/fish rafael
 v sudo systemctl enable sddm
 v sudo systemctl enable bluetooth --now
 v gsettings set org.gnome.desktop.interface font-name 'Google Sans Medium 11 @opsz=11,wght=500'

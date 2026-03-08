@@ -8,7 +8,7 @@ import Quickshell.Io
 import QtQuick
 
 /**
- * NetworkService service with nmcli.
+ * Network service with nmcli.
  */
 Singleton {
     id: root
@@ -22,13 +22,6 @@ Singleton {
     property WifiAccessPoint wifiConnectTarget
     readonly property list<WifiAccessPoint> wifiNetworks: []
     readonly property WifiAccessPoint active: wifiNetworks.find(n => n.active) ?? null
-    readonly property list<var> friendlyWifiNetworks: [...wifiNetworks].sort((a, b) => {
-        if (a.active && !b.active)
-            return -1;
-        if (!a.active && b.active)
-            return 1;
-        return b.strength - a.strength;
-    })
     property string wifiStatus: "disconnected"
 
     property string networkName: ""
@@ -87,11 +80,7 @@ Singleton {
         // TODO: enterprise wifi with username
         network.askingPassword = false;
         changePasswordProc.exec({
-            "environment": {
-                "PASSWORD": password,
-                "SSID": network.ssid
-            },
-            "command": ["bash", "-c", 'nmcli connection modify "$SSID" wifi-sec.psk "$PASSWORD"']
+            "command": ["nmcli", "connection", "modify", network.ssid, "wifi-sec.psk", password]
         })
     }
 
@@ -159,10 +148,17 @@ Singleton {
         updateNetworkStrength.running = true;
     }
 
+    Component.onCompleted: {
+        // Prime initial state once; subsequent updates come from nmcli monitor.
+        Qt.callLater(() => root.update())
+    }
+
     Process {
         id: subscriber
         running: true
         command: ["nmcli", "monitor"]
+        // Auto-restart if the monitor process dies (can happen after lockscreen/suspend)
+        onRunningChanged: if (!running) running = true
         stdout: SplitParser {
             onRead: root.update()
         }
@@ -172,7 +168,7 @@ Singleton {
         id: updateConnectionType
         property string buffer
         command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
-        running: true
+        running: false
         function startCheck() {
             buffer = "";
             updateConnectionType.running = true;
@@ -221,7 +217,7 @@ Singleton {
     Process {
         id: updateNetworkName
         command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
-        running: true
+        running: false
         stdout: SplitParser {
             onRead: data => {
                 root.networkName = data;
@@ -231,11 +227,11 @@ Singleton {
 
     Process {
         id: updateNetworkStrength
-        running: true
-        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | grep '*'"]
+        running: false
+        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
         stdout: SplitParser {
             onRead: data => {
-                root.networkStrength = parseInt(data.match(/\d+/)[0]);
+                root.networkStrength = parseInt(data);
             }
         }
     }
@@ -257,7 +253,7 @@ Singleton {
 
     Process {
         id: getNetworks
-        running: true
+        running: false
         command: ["nmcli", "-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY", "d", "w"]
         environment: ({
             LANG: "C",

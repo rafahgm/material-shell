@@ -3,8 +3,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-import qs.Common.Functions
-import qs.Common
+import qs.Modules.Common
+import qs.Modules.Common.Functions
 
 /**
  * - Eases fuzzy searching for applications by name

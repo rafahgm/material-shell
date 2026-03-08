@@ -3,13 +3,14 @@ pragma ComponentBehavior: Bound
 
 // From https://github.com/caelestia-dots/shell with modifications.
 // License: GPLv3
+
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
 
-import qs.Common
-import qs.Common.Functions
+import qs.Modules.Common
+import qs.Modules.Common.Functions
 
 /**
  * For managing brightness of monitors. Supports both brightnessctl and ddcutil.
@@ -28,14 +29,16 @@ Singleton {
     }
 
     function increaseBrightness(): void {
-        const focusedName = Hyprland.focusedMonitor.name;
+        const focusedName = NiriService.currentOutput
+        if (!focusedName) return;
         const monitor = monitors.find(m => focusedName === m.screen.name);
         if (monitor)
             monitor.setBrightness(monitor.brightness + 0.05);
     }
 
     function decreaseBrightness(): void {
-        const focusedName = Hyprland.focusedMonitor.name;
+        const focusedName = NiriService.currentOutput;
+        if (!focusedName) return;
         const monitor = monitors.find(m => focusedName === m.screen.name);
         if (monitor)
             monitor.setBrightness(monitor.brightness - 0.05);
@@ -48,16 +51,6 @@ Singleton {
         ddcProc.running = true;
     }
 
-    function initializeMonitor(i: int): void {
-        if (i >= monitors.length)
-            return;
-        monitors[i].initialize();
-    }
-
-    function ddcDetectFinished(): void {
-        initializeMonitor(0);
-    }
-
     Process {
         id: ddcProc
 
@@ -68,13 +61,13 @@ Singleton {
                 if (data.startsWith("Display ")) {
                     const lines = data.split("\n").map(l => l.trim());
                     root.ddcMonitors.push({
-                        name: lines.find(l => l.startsWith("DRM connector:")).split("-").slice(1).join('-'),
+                        model: lines.find(l => l.startsWith("Monitor:")).split(":")[2],
                         busNum: lines.find(l => l.startsWith("I2C bus:")).split("/dev/i2c-")[1]
                     });
                 }
             }
         }
-        onExited: root.ddcDetectFinished()
+        onExited: root.ddcMonitorsChanged()
     }
 
     Process {
@@ -85,12 +78,18 @@ Singleton {
         id: monitor
 
         required property ShellScreen screen
-        property bool isDdc
-        property string busNum
+        readonly property bool isDdc: {
+            const match = root.ddcMonitors.find(m => screen.model?.includes(m.model) && !root.monitors.slice(0, root.monitors.indexOf(this)).some(mon => mon.busNum === m.busNum));
+            return !!match;
+        }
+        readonly property string busNum: {
+            const match = root.ddcMonitors.find(m => screen.model?.includes(m.model) && !root.monitors.slice(0, root.monitors.indexOf(this)).some(mon => mon.busNum === m.busNum));
+            return match?.busNum ?? "";
+        }
         property int rawMaxBrightness: 100
         property real brightness
         property real brightnessMultiplier: 1.0
-        property real multipliedBrightness: Math.max(0, Math.min(1, brightness * (Config.options.light.antiFlashbang.enable ? brightnessMultiplier : 1)))
+        property real multipliedBrightness: Math.max(0, Math.min(1, brightness * ((Config.options?.light?.antiFlashbang?.enable ?? false) ? brightnessMultiplier : 1)))
         property bool ready: false
         property bool animateChanges: !monitor.isDdc
 
@@ -108,15 +107,12 @@ Singleton {
             }
         }
         onMultipliedBrightnessChanged: {
-            if (monitor.animationEnabled) syncBrightness();
+            if (monitor.animateChanges) syncBrightness();
             else setTimer.restart();
         }
 
         function initialize() {
             monitor.ready = false;
-            const match = root.ddcMonitors.find(m => m.name === screen.name && !root.monitors.slice(0, root.monitors.indexOf(this)).some(mon => mon.busNum === m.busNum));
-            isDdc = !!match;
-            busNum = match?.busNum ?? "";
             initProc.command = isDdc ? ["ddcutil", "-b", busNum, "getvcp", "10", "--brief"] : ["sh", "-c", `echo "a b c $(brightnessctl g) $(brightnessctl m)"`];
             initProc.running = true;
         }
@@ -130,9 +126,6 @@ Singleton {
                     monitor.ready = true;
                 }
             }
-            onExited: (exitCode, exitStatus) => {
-                initializeMonitor(root.monitors.indexOf(monitor) + 1);
-            }
         }
 
         // We need a delay for DDC monitors because they can be quite slow and might act weird with rapid changes
@@ -145,16 +138,10 @@ Singleton {
         }
 
         function syncBrightness() {
-            const brightnessValue = Math.max(monitor.multipliedBrightness, 0);
-            if (isDdc) {
-                const rawValueRounded = Math.max(Math.floor(brightnessValue * monitor.rawMaxBrightness), 1);
-                setProc.exec(["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded]);
-            } else {
-                const valuePercentNumber = Math.floor(brightnessValue * 100);
-                let valuePercent = `${valuePercentNumber}%`;
-                if (valuePercentNumber == 0) valuePercent = "1"; // Prevent fully black
-                setProc.exec(["brightnessctl", "--class", "backlight", "s", valuePercent, "--quiet"])
-            }
+            const brightnessValue = Math.max(monitor.multipliedBrightness, 0)
+            const rawValueRounded = Math.max(Math.floor(brightnessValue * monitor.rawMaxBrightness), 1);
+            setProc.command = isDdc ? ["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded] : ["brightnessctl", "--class", "backlight", "s", rawValueRounded, "--quiet"];
+            setProc.startDetached();
         }
 
         function setBrightness(value: real): void {
@@ -164,6 +151,14 @@ Singleton {
 
         function setBrightnessMultiplier(value: real): void {
             monitor.brightnessMultiplier = value;
+        }
+
+        Component.onCompleted: {
+            initialize();
+        }
+
+        onBusNumChanged: {
+            initialize();
         }
     }
 
@@ -190,17 +185,18 @@ Singleton {
             required property var modelData
             property string screenName: modelData.name
             property string screenshotPath: `${root.screenshotDir}/screenshot-${screenName}.png`
+
+            // Niri support for anti-flashbang
             Connections {
-                enabled: Config.options.light.antiFlashbang.enable && Appearance.m3colors.darkmode
-                target: Hyprland
-                function onRawEvent(event) {
-                    if (["activewindowv2", "windowtitlev2"].includes(event.name)) {
-                        screenshotTimer.interval = root.contentSwitchDelay;
-                        screenshotTimer.restart();
-                    } else if (["workspacev2"].includes(event.name)) {
-                        screenshotTimer.interval = root.workspaceAnimationDelay;
-                        screenshotTimer.restart();
-                    }
+                enabled: (Config.options?.light?.antiFlashbang?.enable ?? false) && Appearance.m3colors.darkmode
+                target: NiriService
+                function onActiveWindowChanged() {
+                    screenshotTimer.interval = root.contentSwitchDelay;
+                    screenshotTimer.restart();
+                }
+                function onFocusedWorkspaceIdChanged() {
+                    screenshotTimer.interval = root.workspaceAnimationDelay;
+                    screenshotTimer.restart();
                 }
             }
 
@@ -215,15 +211,15 @@ Singleton {
 
             Process {
                 id: screenshotProc
-                command: ["bash", "-c",
-                    `mkdir -p '${StringUtils.shellSingleQuoteEscape(root.screenshotDir)}'`
-                    + ` && grim -o '${StringUtils.shellSingleQuoteEscape(screenScope.screenName)}' -`
-                    + ` | magick png:- -colorspace Gray -format "%[fx:mean*100]" info:`
+                command: ["/usr/bin/bash", "-c", 
+                    `/usr/bin/mkdir -p '${StringUtils.shellSingleQuoteEscape(root.screenshotDir)}'`
+                    + ` && /usr/bin/grim -o '${StringUtils.shellSingleQuoteEscape(screenScope.screenName)}' -`
+                    + ` | /usr/bin/magick png:- -colorspace Gray -format "%[fx:mean*100]" info:`
                 ]
                 stdout: StdioCollector {
                     id: lightnessCollector
                     onStreamFinished: {
-                        Quickshell.execDetached(["rm", screenScope.screenshotPath]); // Cleanup
+                        // No cleanup needed - we pipe directly to magick without saving file
                         const lightness = lightnessCollector.text
                         const newMultiplier = root.brightnessMultiplierForLightness(parseFloat(lightness))
                         Brightness.getMonitorForScreen(screenScope.modelData).setBrightnessMultiplier(newMultiplier)
@@ -238,24 +234,12 @@ Singleton {
     IpcHandler {
         target: "brightness"
 
-        function increment() {
-            onPressed: root.increaseBrightness()
+        function increment(): void {
+            root.increaseBrightness();
         }
 
-        function decrement() {
-            onPressed: root.decreaseBrightness()
+        function decrement(): void {
+            root.decreaseBrightness();
         }
-    }
-
-    GlobalShortcut {
-        name: "brightnessIncrease"
-        description: "Increase brightness"
-        onPressed: root.increaseBrightness()
-    }
-
-    GlobalShortcut {
-        name: "brightnessDecrease"
-        description: "Decrease brightness"
-        onPressed: root.decreaseBrightness()
     }
 }

@@ -14,6 +14,7 @@ Singleton {
     property string distroId: "unknown"
     property string distroIcon: "linux-symbolic"
     property string username: "user"
+    property string displayName: ""
     property string homeUrl: ""
     property string documentationUrl: ""
     property string supportUrl: ""
@@ -30,6 +31,7 @@ Singleton {
         repeat: false
         onTriggered: {
             getUsername.running = true
+            getDesktopEnvironment.running = true
             fileOsRelease.reload()
             const textOsRelease = fileOsRelease.text()
 
@@ -58,7 +60,6 @@ Singleton {
 
             // Update the distroIcon property based on distroId
             switch (distroId) {
-                case "artix":
                 case "arch": distroIcon = "arch-symbolic"; break;
                 case "endeavouros": distroIcon = "endeavouros-symbolic"; break;
                 case "cachyos": distroIcon = "cachyos-symbolic"; break;
@@ -88,18 +89,31 @@ Singleton {
 
     Process {
         id: getUsername
-        command: ["whoami"]
+        command: ["/usr/bin/whoami"]
         stdout: SplitParser {
             onRead: data => {
                 root.username = data.trim()
+                getDisplayName.running = true
+            }
+        }
+    }
+
+    Process {
+        id: getDisplayName
+        running: false
+        command: ["/usr/bin/bash", "-c", `getent passwd "$USER" | cut -d: -f5 | cut -d, -f1`]
+        stdout: SplitParser {
+            onRead: data => {
+                const name = data.trim()
+                root.displayName = name.length > 0 ? name : root.username
             }
         }
     }
 
     Process {
         id: getDesktopEnvironment
-        running: true
-        command: ["bash", "-c", "echo $XDG_CURRENT_DESKTOP,$WAYLAND_DISPLAY"]
+        running: false
+        command: ["/usr/bin/bash", "-c", "echo $XDG_CURRENT_DESKTOP,$WAYLAND_DISPLAY"]
         stdout: StdioCollector {
             id: deCollector
             onStreamFinished: {

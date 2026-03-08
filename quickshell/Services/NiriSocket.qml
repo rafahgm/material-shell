@@ -4,7 +4,6 @@ import Quickshell.Io
 
 Item {
     id: root
-    readonly property string socketPath: Quickshell.env("NIRI_SOCKET")
 
     property alias path: socket.path
     property alias parser: socket.parser
@@ -23,7 +22,7 @@ Item {
 
     Socket {
         id: socket
-        path: root.socketPath
+        path: Quickshell.env("NIRI_SOCKET")
         connected: true
 
         onConnectionStateChanged: {

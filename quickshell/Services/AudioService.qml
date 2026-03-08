@@ -1,12 +1,12 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
-
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 
-import qs.Common
+import qs.Modules.Common
+
 
 /**
  * A nice wrapper for default Pipewire audio sink and source.

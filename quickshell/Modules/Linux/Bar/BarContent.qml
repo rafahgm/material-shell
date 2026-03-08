@@ -1,126 +1,366 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Services.UPower
+import QtQuick.Effects
+import Qt5Compat.GraphicalEffects as GE
 
-import qs.Common
-import qs.Common.Widgets
-import qs.Common.Functions
 import qs.Services
+import qs.Modules.Common
+import qs.Modules.Common.Models
+import qs.Modules.Common.Widgets
+import qs.Modules.Common.Functions
 
 import qs.Modules.Linux.Bar.Widgets
-import qs.Modules.Linux.Bar.Widgets.Media
-import qs.Modules.Linux.Bar.Widgets.Resources
-import qs.Modules.Linux.Bar.Widgets.Clock
-import qs.Modules.Linux.Bar.Widgets.SysTray
-import qs.Modules.Linux.Bar.Widgets.Weather
-import qs.Modules.Linux.Bar.Widgets.Battery
+import qs.Modules.Linux.Bar.Components
+import qs.Modules.Linux.Bar.Components.Resources
+import qs.Modules.Linux.Bar.Components.Clock
+import qs.Modules.Linux.Bar.Components.SysTray
+import qs.Modules.Linux.Bar.Components.Weather
 
-Item {
+Item { // Bar content region
     id: root
 
     property var screen: root.QsWindow.window?.screen
     property var brightnessMonitor: BrightnessService.getMonitorForScreen(screen)
-    property real verbose: screen?.width > Appearance.sizes.barShortenScreenWidthThreshold
+
+    // Right-click context menu anchor (invisible, positioned at click)
+    Item {
+        id: barContextMenuAnchor
+        width: 1
+        height: 1
+    }
+
+    function openBarContextMenu(clickX, clickY, mouseArea) {
+        // Position anchor at bar edge for correct popup positioning
+        // For bar top: anchor at bottom edge (y = height), popup appears below
+        // For bar bottom: anchor at top edge (y = 0), popupAbove makes it appear above
+        const mapped = mouseArea.mapToItem(root, clickX, clickY)
+        barContextMenuAnchor.x = mapped.x
+        barContextMenuAnchor.y = (Config.options?.bar?.bottom ?? false) ? 0 : root.height
+        barContextMenu.active = true
+    }
+
+    ContextMenu {
+        id: barContextMenu
+        anchorItem: barContextMenuAnchor
+        popupAbove: Config.options?.bar?.bottom ?? false
+        closeOnFocusLost: true
+        closeOnHoverLost: true
+
+        model: [
+            {
+                iconName: "browse_activity",
+                monochromeIcon: true,
+                text: TranslationService.tr("Mission Center"),
+                action: () => {
+                    Session.launchTaskManager()
+                },
+            },
+            { type: "separator" },
+            {
+                iconName: "settings",
+                monochromeIcon: true,
+                text: TranslationService.tr("Settings"),
+                action: () => {
+                    Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "settings", "open"])
+                },
+            },
+        ]
+    }
+    property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen?.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen?.width) ? 1 : 0
+    readonly property int baseCenterSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
+    // Both center groups share the same width so workspaces stay perfectly centered
+    readonly property int centerSideModuleWidth: Math.max(baseCenterSideModuleWidth, rightCenterGroupContent.implicitWidth)
+    readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && (Config.options?.bar?.cornerStyle === 3)
+    readonly property color separatorColor: Appearance.colors.colOutlineVariant
+
+    // Per-monitor wallpaper URL for Aurora blur — uses the actual wallpaper on this screen
+    readonly property string wallpaperUrl: {
+        const _dep1 = WallpaperListener.multiMonitorEnabled
+        const _dep2 = WallpaperListener.effectivePerMonitor
+        const _dep3 = WallpapersService.effectiveWallpaperUrl
+        return WallpaperListener.wallpaperUrlForScreen(root.screen)
+    }
+
+    readonly property bool _useGlobalQuantizer: root.wallpaperUrl === WallpapersService.effectiveWallpaperUrl
+    ColorQuantizer {
+        id: wallpaperColorQuantizer
+        source: root._useGlobalQuantizer ? "" : root.wallpaperUrl
+        depth: 0 // 2^0 = 1 color
+        rescaleSize: 10
+    }
+
+    readonly property color wallpaperDominantColor: root._useGlobalQuantizer
+        ? Appearance.wallpaperDominantColor
+        : (wallpaperColorQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary)
+    AdaptedMaterialScheme {
+        id: _localBlendedColors
+        color: ColorUtils.mix(root.wallpaperDominantColor, Appearance.colors.colPrimaryContainer, 0.8) || Appearance.m3colors.m3secondaryContainer
+    }
+    readonly property QtObject blendedColors: root._useGlobalQuantizer
+        ? Appearance.wallpaperBlendedColors : _localBlendedColors
+
+    readonly property bool inirEverywhere: Appearance.inirEverywhere
+    readonly property bool angelEverywhere: Appearance.angelEverywhere
 
     component VerticalBarSeparator: Rectangle {
         Layout.topMargin: Appearance.sizes.baseBarHeight / 3
         Layout.bottomMargin: Appearance.sizes.baseBarHeight / 3
         Layout.fillHeight: true
         implicitWidth: 1
-        color: Appearance.colors.colOutlineVariant
+        color: root.inirEverywhere ? Appearance.inir.colBorderSubtle : root.separatorColor
     }
 
     // Background shadow
     Loader {
-        active: Config.options.bar.showBackground && Config.options.bar.cornerStyle === 1 && Config.options.bar.floatStyleShadow
+        active: !root.inirEverywhere
+            && (Appearance.angelEverywhere || !Appearance.auroraEverywhere)
+            && !Appearance.gameModeMinimal
+            && (Config.options?.bar?.showBackground ?? true)
+            && (Appearance.angelEverywhere || (((Config.options?.bar?.cornerStyle ?? 0) === 1 || (Config.options?.bar?.cornerStyle ?? 0) === 3)
+            && (Config.options?.bar?.floatStyleShadow ?? true)))
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined // The loader's anchors act on this, and this should not have any anchor
             target: barBackground
         }
     }
-
     // Background
     Rectangle {
         id: barBackground
-        anchors.fill: parent
-        anchors.margins: Config.options.bar.cornerStyle === Enums.CornerStyle.Float ? (Appearance.sizes.gapsOut) : 0 // idk why but +1 is needed
-        
-        color: Config.options.bar.showBackground ? Appearance.colors.colLayer0 : "transparent"
-        radius: Config.options.bar.cornerStyle === 1 ? Appearance.rounding.windowRounding : 0
-        border.width: Config.options.bar.cornerStyle === 1 ? 1 : 0
-        border.color: Appearance.colors.colLayer0Border
+        readonly property bool auroraEverywhere: Appearance.auroraEverywhere
+        readonly property int cornerStyle: Config.options?.bar?.cornerStyle ?? 0
+        // Float (1) and Card (3) are floating; Aurora makes everything floating except Hug and Rect
+        readonly property bool floatingStyle: (cornerStyle === 1 || cornerStyle === 3) || (auroraEverywhere && cornerStyle !== 0 && cornerStyle !== 2)
+
+        anchors {
+            fill: parent
+            margins: floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+        }
+        readonly property real barMargin: floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+        readonly property bool isBottom: Config.options?.bar?.bottom ?? false
+
+        readonly property QtObject blendedColors: root.blendedColors
+
+        visible: Config.options?.bar?.showBackground ?? true
+
+        // Color logic per global style and corner style
+        color: {
+            if (root.angelEverywhere) {
+                return ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
+            }
+            if (root.inirEverywhere) {
+                return Appearance.inir.colLayer0
+            }
+            if (auroraEverywhere) {
+                // Aurora: use solid base for non-floating, blended for floating
+                return ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
+            }
+            // Material/Cards
+            if (root.cardStyleEverywhere || cornerStyle === 3) {
+                return Appearance.colors.colLayer1
+            }
+            return Appearance.colors.colLayer0
+        }
+
+        // Radius logic per global style and corner style
+        radius: {
+            // Custom rounding override (-1 means use theme default)
+            const customRounding = Config.options?.bar?.customRounding ?? -1
+            if (customRounding >= 0) {
+                return customRounding
+            }
+            if (root.angelEverywhere) {
+                return (cornerStyle === 1 || cornerStyle === 3) ? Appearance.angel.roundingNormal : 0
+            }
+            if (root.inirEverywhere) {
+                // Inir: use inir rounding for Float/Card, 0 for Hug/Rect
+                if (cornerStyle === 1 || cornerStyle === 3) {
+                    return Appearance.inir.roundingNormal
+                }
+                return 0
+            }
+            if (floatingStyle) {
+                // Float or Card floating
+                return cornerStyle === 3 ? Appearance.rounding.normal : Appearance.rounding.windowRounding
+            }
+            return 0
+        }
+
+        // Border logic per global style
+        border.width: {
+            if (root.angelEverywhere) return Appearance.angel.panelBorderWidth
+            if (root.inirEverywhere) {
+                return (cornerStyle === 1 || cornerStyle === 3) ? 1 : 0
+            }
+            if (auroraEverywhere) {
+                return floatingStyle ? 1 : 0
+            }
+            return floatingStyle ? 1 : 0
+        }
+        border.color: {
+            if (root.angelEverywhere) return Appearance.angel.colPanelBorder
+            if (root.inirEverywhere) {
+                return Appearance.inir.colBorder
+            }
+            if (auroraEverywhere) {
+                return Appearance.aurora.colTooltipBorder
+            }
+            return Appearance.colors.colLayer0Border
+        }
+
+        clip: true
+
+        layer.enabled: auroraEverywhere && !root.inirEverywhere && !gameModeMinimal
+        layer.effect: GE.OpacityMask {
+            maskSource: Rectangle {
+                width: barBackground.width
+                height: barBackground.height
+                radius: barBackground.radius
+            }
+        }
+
+        Image {
+            id: blurredWallpaper
+            x: -barBackground.barMargin
+            y: barBackground.isBottom ? -(root.screen?.height ?? 1080) + barBackground.height + barBackground.barMargin : -barBackground.barMargin
+            width: root.screen?.width ?? 1920
+            height: root.screen?.height ?? 1080
+            visible: barBackground.auroraEverywhere && !root.inirEverywhere && !barBackground.gameModeMinimal
+            source: root.wallpaperUrl
+            fillMode: Image.PreserveAspectCrop
+            cache: true
+            asynchronous: true
+
+            layer.enabled: Appearance.effectsEnabled
+            layer.effect: MultiEffect {
+                source: blurredWallpaper
+                anchors.fill: source
+                saturation: root.angelEverywhere
+                    ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
+                    : (Appearance.effectsEnabled ? 0.2 : 0)
+                blurEnabled: Appearance.effectsEnabled
+                blurMax: 100
+                blur: Appearance.effectsEnabled
+                    ? (root.angelEverywhere ? Appearance.angel.blurIntensity : 1)
+                    : 0
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: root.angelEverywhere
+                    ? ColorUtils.transparentize((barBackground.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.angel.overlayOpacity * Appearance.angel.panelTransparentize)
+                    : ColorUtils.transparentize((barBackground.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.aurora.overlayTransparentize)
+            }
+        }
+
+        // Angel inset glow — top edge
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: Appearance.angel.insetGlowHeight
+            visible: root.angelEverywhere
+            color: Appearance.angel.colInsetGlow
+        }
+
+        // Angel partial border — elegant half-borders
+        AngelPartialBorder {
+            targetRadius: barBackground.radius
+        }
     }
 
-    FocusedMouseScrollArea { // Left side | scroll to change brightness
+    FocusedScrollMouseArea { // Left side | scroll to change brightness
         id: barLeftSideMouseArea
 
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: middleSection.left
-        
+        anchors {
+            top: parent.top
+            bottom: parent.bottom
+            left: parent.left
+            right: middleSection.left
+        }
         implicitWidth: leftSectionRowLayout.implicitWidth
         implicitHeight: Appearance.sizes.baseBarHeight
 
         onScrollDown: root.brightnessMonitor.setBrightness(root.brightnessMonitor.brightness - 0.05)
         onScrollUp: root.brightnessMonitor.setBrightness(root.brightnessMonitor.brightness + 0.05)
         onMovedAway: GlobalStates.osdBrightnessOpen = false
+        onPressed: event => {
+            if (event.button === Qt.LeftButton)
+                GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+            else if (event.button === Qt.RightButton)
+                root.openBarContextMenu(event.x, event.y, barLeftSideMouseArea)
+        }
 
-        // Visual content
+        // ScrollHint as overlay - at the inner edge of the margin space
         ScrollHint {
-            reveal: barLeftSideMouseArea.hovered
+            id: leftScrollHint
+            reveal: barLeftSideMouseArea.hovered && (Config.options?.bar?.showScrollHints ?? true)
             icon: "light_mode"
             tooltipText: TranslationService.tr("Scroll to change brightness")
             side: "left"
-            anchors.left: parent.left
+            x: Appearance.rounding.screenRounding - implicitWidth - Appearance.sizes.spacingSmall
             anchors.verticalCenter: parent.verticalCenter
+            z: 1
         }
 
         RowLayout {
             id: leftSectionRowLayout
             anchors.fill: parent
-            spacing: 0
+            anchors.leftMargin: Appearance.rounding.screenRounding
+            anchors.rightMargin: Appearance.rounding.screenRounding
+            spacing: 10
 
-            LeftSidebarButton {
-                id: leftSidebarButton
+            LeftSidebarButton { // Left sidebar button
+                visible: Config.options?.bar?.modules?.leftSidebarButton ?? true
                 Layout.alignment: Qt.AlignVCenter
-                Layout.leftMargin: Appearance.rounding.screenRounding + 5
+                colBackground: barLeftSideMouseArea.hovered
+                    ? (Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover)
+                    : "transparent"
             }
 
             ActiveWindow {
-                Layout.leftMargin: 10 + (leftSidebarButton.visible ? 0 : Appearance.rounding.screenRounding)
-                Layout.rightMargin: Appearance.rounding.screenRounding
+                visible: (Config.options?.bar?.modules?.activeWindow ?? true) && root.useShortenedForm === 0
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             }
         }
     }
 
-    Row {
+    Row { // Middle section
         id: middleSection
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-
+        anchors {
+            top: parent.top
+            bottom: parent.bottom
+            horizontalCenter: parent.horizontalCenter
+        }
         spacing: 4
 
         BarGroup {
             id: leftCenterGroup
             anchors.verticalCenter: parent.verticalCenter
+            implicitWidth: root.centerSideModuleWidth
 
-            Resources {
-                alwaysShowAllResources: root.verbose
-                Layout.fillWidth: root.verbose
+            Loader {
+                active: Config.options?.bar?.modules?.resources ?? true
+                visible: active
+                Layout.fillWidth: root.useShortenedForm === 2
+                sourceComponent: Resources {
+                    alwaysShowAllResources: root.useShortenedForm === 2
+                }
             }
 
-            Media {
+            Loader {
+                active: (Config.options?.bar?.modules?.media ?? true) && root.useShortenedForm < 2
+                visible: active
                 Layout.fillWidth: true
+                sourceComponent: Media {}
             }
         }
 
         VerticalBarSeparator {
-            visible: Config.options?.bar?.borderless ?? true
+            visible: Config.options?.bar.borderless
         }
 
         BarGroup {
@@ -147,39 +387,49 @@ Item {
         }
 
         VerticalBarSeparator {
-            visible: Config.options?.bar?.borderless ?? true
+            visible: Config.options?.bar.borderless
         }
 
         MouseArea {
             id: rightCenterGroup
             anchors.verticalCenter: parent.verticalCenter
-            implicitWidth: rightCenterGroupContent.implicitWidth
+            implicitWidth: root.centerSideModuleWidth
             implicitHeight: rightCenterGroupContent.implicitHeight
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+            onPressed: event => {
+                if (event.button === Qt.RightButton) {
+                    GlobalStates.controlPanelOpen = !GlobalStates.controlPanelOpen;
+                } else {
+                    GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+                }
+            }
 
             BarGroup {
                 id: rightCenterGroupContent
                 anchors.fill: parent
 
                 Clock {
-                    verbose: root.verbose
+                    visible: Config.options?.bar?.modules?.clock ?? true
+                    showDate: ((Config.options?.bar?.verbose ?? true) && root.useShortenedForm < 2)
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: true
                 }
 
                 UtilButtons {
-                    visible: root.verbose
+                    visible: (Config.options?.bar?.modules?.utilButtons ?? true) && ((Config.options?.bar?.verbose ?? true) && root.useShortenedForm === 0)
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                BatteryIndicator {
-                    visible: BatteryService.available
-                    Layout.alignment: Qt.AlignVCenter
-                }
+            //     BatteryIndicator {
+            //         visible: (Config.options?.bar?.modules?.battery ?? true) && (root.useShortenedForm < 2 && Battery.available)
+            //         Layout.alignment: Qt.AlignVCenter
+            //     }
             }
         }
     }
 
-    FocusedMouseScrollArea { // Right side | scroll to change volume
+    FocusedScrollMouseArea { // Right side | scroll to change volume
         id: barRightSideMouseArea
 
         anchors {
@@ -191,41 +441,58 @@ Item {
         implicitWidth: rightSectionRowLayout.implicitWidth
         implicitHeight: Appearance.sizes.baseBarHeight
 
-        onScrollDown: AudioService.decrementVolume()
-        onScrollUp: AudioService.incrementVolume()
-        onMovedAway: GlobalStates.osdVolumeOpen = false
+        onScrollDown: AudioService.decrementVolume();
+        onScrollUp: AudioService.incrementVolume();
+        onMovedAway: GlobalStates.osdVolumeOpen = false;
+        onPressed: event => {
+            if (event.button === Qt.LeftButton) {
+                GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+            } else if (event.button === Qt.RightButton) {
+                root.openBarContextMenu(event.x, event.y, barRightSideMouseArea)
+            }
+        }
 
-        // Visual content
+        // ScrollHint as overlay - at the inner edge of the margin space
         ScrollHint {
-            reveal: barRightSideMouseArea.hovered
+            id: rightScrollHint
+            reveal: barRightSideMouseArea.hovered && (Config.options?.bar?.showScrollHints ?? true)
             icon: "volume_up"
             tooltipText: TranslationService.tr("Scroll to change volume")
             side: "right"
-            anchors.right: parent.right
+            x: parent.width - Appearance.rounding.screenRounding + Appearance.sizes.spacingSmall
             anchors.verticalCenter: parent.verticalCenter
+            z: 1
         }
 
         RowLayout {
             id: rightSectionRowLayout
             anchors.fill: parent
+            anchors.leftMargin: Appearance.rounding.screenRounding
+            anchors.rightMargin: Appearance.rounding.screenRounding
             spacing: 5
             layoutDirection: Qt.RightToLeft
 
             RippleButton { // Right sidebar button
                 id: rightSidebarButton
+                visible: Config.options?.bar?.modules?.rightSidebarButton ?? true
 
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                Layout.rightMargin: Appearance.rounding.screenRounding + 5
                 Layout.fillWidth: false
 
                 implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
                 implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
 
                 buttonRadius: Appearance.rounding.full
-                colRipple: Appearance.colors.colLayer1Active
-                colBackgroundToggled: Appearance.colors.colSecondaryContainer
-                colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
-                colRippleToggled: Appearance.colors.colSecondaryContainerActive
+
+                colBackground: barRightSideMouseArea.hovered
+                    ? (Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover)
+                    : "transparent"
+                colBackgroundHover: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover
+                colRipple: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colLayer1Active
+                colBackgroundToggled: Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colSecondaryContainer
+                colBackgroundToggledHover: Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurfaceHover : Appearance.colors.colSecondaryContainerHover
+                colRippleToggled: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colSecondaryContainerActive
+
                 toggled: GlobalStates.sidebarRightOpen
                 property color colText: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer0
 
@@ -269,7 +536,7 @@ Item {
                             color: rightSidebarButton.colText
                         }
                     }
-                    
+
                     Revealer {
                         reveal: NotificationsService.silent || NotificationsService.unread > 0
                         Layout.fillHeight: true
@@ -290,8 +557,8 @@ Item {
                     }
                     MaterialSymbol {
                         Layout.leftMargin: indicatorsRowLayout.realSpacing
-                        visible: BluetoothService.available
-                        text: BluetoothService.connected ? "bluetooth_connected" : BluetoothService.enabled ? "bluetooth" : "bluetooth_disabled"
+                        visible: BluetoothStatus.available
+                        text: BluetoothStatus.connected ? "bluetooth_connected" : BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
                         iconSize: Appearance.font.pixelSize.larger
                         color: rightSidebarButton.colText
                     }
@@ -299,10 +566,21 @@ Item {
             }
 
             SysTray {
+                visible: (Config.options?.bar?.modules?.sysTray ?? true) && root.useShortenedForm === 0
                 Layout.fillWidth: false
                 Layout.fillHeight: true
-                invertSide: Config?.options.bar.bottom
+                invertSide: Config.options?.bar?.bottom ?? false
             }
+
+            // Timer indicator
+            // TimerIndicator {
+            //     Layout.alignment: Qt.AlignVCenter
+            // }
+
+            // iNiR shell update indicator
+            // ShellUpdateIndicator {
+            //     Layout.alignment: Qt.AlignVCenter
+            // }
 
             Item {
                 Layout.fillWidth: true
@@ -312,6 +590,7 @@ Item {
             // Weather
             Loader {
                 Layout.leftMargin: 4
+                active: (Config.options?.bar?.modules?.weather ?? true) && (Config.options?.bar?.weather?.enable ?? false)
 
                 sourceComponent: BarGroup {
                     Weather {}

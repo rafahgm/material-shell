@@ -1,0 +1,5 @@
+module qs.Modules.Common.Models
+
+AdaptedMaterialScheme 1.0 AdaptedMaterialScheme.qml
+AnimatedTabIndexPair 1.0 AnimatedTabIndexPair.qml
+FolderListModelWithHistory 1.0 FolderListModelWithHistory.qml

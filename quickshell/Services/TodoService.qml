@@ -1,12 +1,11 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
+import Quickshell
+import Quickshell.Io
+import QtQuick
 
-import Quickshell;
-import Quickshell.Io;
-import QtQuick;
-
-import qs.Common
+import qs.Modules.Common
 
 /**
  * Simple to-do list manager.
@@ -16,72 +15,75 @@ Singleton {
     id: root
     property var filePath: Directories.todoPath
     property var list: []
-    
+
     function addItem(item) {
-        list.push(item)
+        list.push(item);
         // Reassign to trigger onListChanged
-        root.list = list.slice(0)
-        todoFileView.setText(JSON.stringify(root.list))
+        root.list = list.slice(0);
+        todoFileView.setText(JSON.stringify(root.list));
     }
 
     function addTask(desc) {
         const item = {
             "content": desc,
-            "done": false,
-        }
-        addItem(item)
+            "done": false
+        };
+        addItem(item);
     }
 
     function markDone(index) {
         if (index >= 0 && index < list.length) {
-            list[index].done = true
+            list[index].done = true;
             // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-            todoFileView.setText(JSON.stringify(root.list))
+            root.list = list.slice(0);
+            todoFileView.setText(JSON.stringify(root.list));
         }
     }
 
     function markUnfinished(index) {
         if (index >= 0 && index < list.length) {
-            list[index].done = false
+            list[index].done = false;
             // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-            todoFileView.setText(JSON.stringify(root.list))
+            root.list = list.slice(0);
+            todoFileView.setText(JSON.stringify(root.list));
         }
     }
 
     function deleteItem(index) {
         if (index >= 0 && index < list.length) {
-            list.splice(index, 1)
+            list.splice(index, 1);
             // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-            todoFileView.setText(JSON.stringify(root.list))
+            root.list = list.slice(0);
+            todoFileView.setText(JSON.stringify(root.list));
         }
     }
 
     function refresh() {
-        todoFileView.reload()
+        todoFileView.reload();
     }
 
     Component.onCompleted: {
-        refresh()
+        refresh();
     }
 
     FileView {
         id: todoFileView
         path: Qt.resolvedUrl(root.filePath)
         onLoaded: {
-            const fileContents = todoFileView.text()
-            root.list = JSON.parse(fileContents)
-            console.info("[To Do] File loaded")
+            const fileContents = todoFileView.text();
+            root.list = JSON.parse(fileContents);
+            console.log("[To Do] File loaded");
         }
-        onLoadFailed: (error) => {
-            if(error == FileViewError.FileNotFound) {
-                console.warn("[To Do] File not found, creating new file.")
-                root.list = []
-                todoFileView.setText(JSON.stringify(root.list))
+        onLoadFailed: error => {
+            if (error == FileViewError.FileNotFound) {
+                console.log("[To Do] File not found, creating new file.");
+                // Ensure parent directory exists
+                const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'));
+                Process.exec(["/usr/bin/mkdir", "-p", parentDir]);
+                root.list = [];
+                todoFileView.setText(JSON.stringify(root.list));
             } else {
-                console.error("[To Do] Error loading file: " + error)
+                console.log("[To Do] Error loading file: " + error);
             }
         }
     }

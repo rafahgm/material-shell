@@ -7,10 +7,12 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 
-import qs.Common
+import qs.Modules.Common
 
 Singleton {
     id: root
+
+    
 
     property var workspaces: ({})
     property var allWorkspaces: []
@@ -46,21 +48,22 @@ Singleton {
 
     NiriSocket {
         id: eventStreamSocket
+        connected: true
 
         onConnectionStateChanged: {
             if (connected) {
-                send('"EventStream"');
-                fetchOutputs();
+                send('"EventStream"')
+                fetchOutputs()
             }
         }
 
         parser: SplitParser {
             onRead: line => {
                 try {
-                    const event = JSON.parse(line);
-                    handleNiriEvent(event);
+                    const event = JSON.parse(line)
+                    handleNiriEvent(event)
                 } catch (e) {
-                    console.warn("NiriService: Failed to parse event:", line, e);
+                    console.warn("NiriService: Failed to parse event:", line, e)
                 }
             }
         }
@@ -78,15 +81,15 @@ Singleton {
             id: fetchOutputsCollector
             onStreamFinished: {
                 try {
-                    const outputsData = JSON.parse(fetchOutputsCollector.text);
-                    outputs = outputsData;
-                    console.info("NiriService: Loaded", Object.keys(outputsData).length, "outputs");
-                    updateDisplayScales();
+                    const outputsData = JSON.parse(fetchOutputsCollector.text)
+                    outputs = outputsData
+                    console.info("NiriService: Loaded", Object.keys(outputsData).length, "outputs")
+                    updateDisplayScales()
                     if (windows.length > 0) {
-                        windows = sortWindowsByLayout(windows);
+                        windows = sortWindowsByLayout(windows)
                     }
                 } catch (e) {
-                    console.warn("NiriService: Failed to parse outputs:", e);
+                    console.warn("NiriService: Failed to parse outputs:", e)
                 }
             }
         }
@@ -96,32 +99,31 @@ Singleton {
     Timer {
         id: fetchOutputsDebounce
         interval: 200
-        onTriggered: {
-            fetchOutputsProcess.running = true;
-        }
+        onTriggered: fetchOutputsProcess.running = true
     }
 
     function fetchOutputs() {
-        fetchOutputsDebounce.restart();
+        fetchOutputsDebounce.restart()
     }
 
     function updateDisplayScales() {
         if (!outputs || Object.keys(outputs).length === 0)
-            return;
-        const scales = {};
+            return
+
+        const scales = {}
         for (const outputName in outputs) {
-            const output = outputs[outputName];
+            const output = outputs[outputName]
             if (output.logical && output.logical.scale !== undefined) {
-                scales[outputName] = output.logical.scale;
+                scales[outputName] = output.logical.scale
             }
         }
 
-        displayScales = scales;
+        displayScales = scales
     }
 
     function sortWindowsByLayout(windowList) {
         const enriched = windowList.map(w => {
-            const ws = workspaces[w.workspace_id];
+            const ws = workspaces[w.workspace_id]
             if (!ws) {
                 return {
                     window: w,
@@ -130,16 +132,16 @@ Singleton {
                     wsIdx: 999999,
                     col: 999999,
                     row: 999999
-                };
+                }
             }
 
-            const outputInfo = outputs[ws.output];
-            const outputX = (outputInfo && outputInfo.logical) ? outputInfo.logical.x : 999999;
-            const outputY = (outputInfo && outputInfo.logical) ? outputInfo.logical.y : 999999;
+            const outputInfo = outputs[ws.output]
+            const outputX = (outputInfo && outputInfo.logical) ? outputInfo.logical.x : 999999
+            const outputY = (outputInfo && outputInfo.logical) ? outputInfo.logical.y : 999999
 
-            const pos = w.layout?.pos_in_scrolling_layout;
-            const col = (pos && pos.length >= 2) ? pos[0] : 999999;
-            const row = (pos && pos.length >= 2) ? pos[1] : 999999;
+            const pos = w.layout?.pos_in_scrolling_layout
+            const col = (pos && pos.length >= 2) ? pos[0] : 999999
+            const row = (pos && pos.length >= 2) ? pos[1] : 999999
 
             return {
                 window: w,
@@ -148,317 +150,308 @@ Singleton {
                 wsIdx: ws.idx,
                 col: col,
                 row: row
-            };
-        });
+            }
+        })
 
         enriched.sort((a, b) => {
-            if (a.outputX !== b.outputX)
-                return a.outputX - b.outputX;
-            if (a.outputY !== b.outputY)
-                return a.outputY - b.outputY;
-            if (a.wsIdx !== b.wsIdx)
-                return a.wsIdx - b.wsIdx;
-            if (a.col !== b.col)
-                return a.col - b.col;
-            if (a.row !== b.row)
-                return a.row - b.row;
-            return a.window.id - b.window.id;
-        });
+            if (a.outputX !== b.outputX) return a.outputX - b.outputX
+            if (a.outputY !== b.outputY) return a.outputY - b.outputY
+            if (a.wsIdx !== b.wsIdx) return a.wsIdx - b.wsIdx
+            if (a.col !== b.col) return a.col - b.col
+            if (a.row !== b.row) return a.row - b.row
+            return a.window.id - b.window.id
+        })
 
-        return enriched.map(e => e.window);
+        return enriched.map(e => e.window)
     }
 
     function handleNiriEvent(event) {
-        const eventType = Object.keys(event)[0];
+        const eventType = Object.keys(event)[0]
 
         switch (eventType) {
         case 'WorkspacesChanged':
-            handleWorkspacesChanged(event.WorkspacesChanged);
-            break;
+            handleWorkspacesChanged(event.WorkspacesChanged)
+            break
         case 'WorkspaceActivated':
-            handleWorkspaceActivated(event.WorkspaceActivated);
-            break;
+            handleWorkspaceActivated(event.WorkspaceActivated)
+            break
         case 'WorkspaceActiveWindowChanged':
-            handleWorkspaceActiveWindowChanged(event.WorkspaceActiveWindowChanged);
-            break;
+            handleWorkspaceActiveWindowChanged(event.WorkspaceActiveWindowChanged)
+            break
         case 'WindowFocusChanged':
-            handleWindowFocusChanged(event.WindowFocusChanged);
-            break;
+            handleWindowFocusChanged(event.WindowFocusChanged)
+            break
         case 'WindowsChanged':
-            handleWindowsChanged(event.WindowsChanged);
-            break;
+            handleWindowsChanged(event.WindowsChanged)
+            break
         case 'WindowClosed':
-            handleWindowClosed(event.WindowClosed);
-            break;
+            handleWindowClosed(event.WindowClosed)
+            break
         case 'WindowOpenedOrChanged':
-            handleWindowOpenedOrChanged(event.WindowOpenedOrChanged);
-            break;
+            handleWindowOpenedOrChanged(event.WindowOpenedOrChanged)
+            break
         case 'WindowLayoutsChanged':
-            handleWindowLayoutsChanged(event.WindowLayoutsChanged);
-            break;
+            handleWindowLayoutsChanged(event.WindowLayoutsChanged)
+            break
         case 'OutputsChanged':
-            handleOutputsChanged(event.OutputsChanged);
-            break;
+            handleOutputsChanged(event.OutputsChanged)
+            break
         case 'OverviewOpenedOrClosed':
-            handleOverviewChanged(event.OverviewOpenedOrClosed);
-            break;
+            handleOverviewChanged(event.OverviewOpenedOrClosed)
+            break
         case 'ConfigLoaded':
-            handleConfigLoaded(event.ConfigLoaded);
-            break;
+            handleConfigLoaded(event.ConfigLoaded)
+            break
         case 'KeyboardLayoutsChanged':
-            handleKeyboardLayoutsChanged(event.KeyboardLayoutsChanged);
-            break;
+            handleKeyboardLayoutsChanged(event.KeyboardLayoutsChanged)
+            break
         case 'KeyboardLayoutSwitched':
-            handleKeyboardLayoutSwitched(event.KeyboardLayoutSwitched);
-            break;
+            handleKeyboardLayoutSwitched(event.KeyboardLayoutSwitched)
+            break
         case 'WorkspaceUrgencyChanged':
-            handleWorkspaceUrgencyChanged(event.WorkspaceUrgencyChanged);
-            break;
+            handleWorkspaceUrgencyChanged(event.WorkspaceUrgencyChanged)
+            break
         }
     }
 
     function handleWorkspacesChanged(data) {
-        const newWorkspaces = {};
+        const newWorkspaces = {}
 
         for (const ws of data.workspaces) {
-            const oldWs = root.workspaces[ws.id];
-            newWorkspaces[ws.id] = ws;
+            const oldWs = root.workspaces[ws.id]
+            newWorkspaces[ws.id] = ws
             if (oldWs && oldWs.active_window_id !== undefined) {
-                newWorkspaces[ws.id].active_window_id = oldWs.active_window_id;
+                newWorkspaces[ws.id].active_window_id = oldWs.active_window_id
             }
         }
 
-        root.workspaces = newWorkspaces;
-        allWorkspaces = Object.values(newWorkspaces).sort((a, b) => a.idx - b.idx);
+        root.workspaces = newWorkspaces
+        allWorkspaces = Object.values(newWorkspaces).sort((a, b) => a.idx - b.idx)
 
-        focusedWorkspaceIndex = allWorkspaces.findIndex(w => w.is_focused);
+        focusedWorkspaceIndex = allWorkspaces.findIndex(w => w.is_focused)
         if (focusedWorkspaceIndex >= 0) {
-            const focusedWs = allWorkspaces[focusedWorkspaceIndex];
-            focusedWorkspaceId = focusedWs.id;
-            currentOutput = focusedWs.output || "";
+            const focusedWs = allWorkspaces[focusedWorkspaceIndex]
+            focusedWorkspaceId = focusedWs.id
+            currentOutput = focusedWs.output || ""
         } else {
-            focusedWorkspaceIndex = 0;
-            focusedWorkspaceId = "";
+            focusedWorkspaceIndex = 0
+            focusedWorkspaceId = ""
         }
 
-        updateCurrentOutputWorkspaces();
+        updateCurrentOutputWorkspaces()
     }
 
     function handleWorkspaceActivated(data) {
-        const ws = root.workspaces[data.id];
+        const ws = root.workspaces[data.id]
         if (!ws) {
-            return;
+            return
         }
-        const output = ws.output;
+        const output = ws.output
 
-        const updatedWorkspaces = {};
-        let hasChanges = false;
+        const updatedWorkspaces = {}
+        let hasChanges = false
 
         for (const id in root.workspaces) {
-            const workspace = root.workspaces[id];
-            const got_activated = workspace.id === data.id;
-            const needsUpdate = (workspace.output === output) || (data.focused && got_activated);
+            const workspace = root.workspaces[id]
+            const got_activated = workspace.id === data.id
+            const needsUpdate = (workspace.output === output) || (data.focused && got_activated)
 
             if (!needsUpdate) {
-                updatedWorkspaces[id] = workspace;
-                continue;
+                updatedWorkspaces[id] = workspace
+                continue
             }
 
-            const updatedWs = {};
+            const updatedWs = {}
             for (let prop in workspace) {
-                updatedWs[prop] = workspace[prop];
+                updatedWs[prop] = workspace[prop]
             }
 
             if (workspace.output === output) {
-                updatedWs.is_active = got_activated;
+                updatedWs.is_active = got_activated
             }
 
             if (data.focused) {
-                updatedWs.is_focused = got_activated;
+                updatedWs.is_focused = got_activated
             }
 
-            updatedWorkspaces[id] = updatedWs;
-            hasChanges = true;
+            updatedWorkspaces[id] = updatedWs
+            hasChanges = true
         }
 
-        if (!hasChanges)
-            return;
-        root.workspaces = updatedWorkspaces;
+        if (!hasChanges) return
+        root.workspaces = updatedWorkspaces
 
-        allWorkspaces = Object.values(updatedWorkspaces).sort((a, b) => a.idx - b.idx);
+        allWorkspaces = Object.values(updatedWorkspaces).sort((a, b) => a.idx - b.idx)
 
-        focusedWorkspaceIndex = allWorkspaces.findIndex(w => w.is_focused);
+        focusedWorkspaceIndex = allWorkspaces.findIndex(w => w.is_focused)
         if (focusedWorkspaceIndex >= 0) {
-            const focusedWs = allWorkspaces[focusedWorkspaceIndex];
-            focusedWorkspaceId = focusedWs.id;
-            currentOutput = focusedWs.output || "";
+            const focusedWs = allWorkspaces[focusedWorkspaceIndex]
+            focusedWorkspaceId = focusedWs.id
+            currentOutput = focusedWs.output || ""
         } else {
-            focusedWorkspaceIndex = 0;
-            focusedWorkspaceId = "";
+            focusedWorkspaceIndex = 0
+            focusedWorkspaceId = ""
         }
 
-        updateCurrentOutputWorkspaces();
+        updateCurrentOutputWorkspaces()
     }
 
     function handleWindowFocusChanged(data) {
-        const focusedWindowId = data.id;
+        const focusedWindowId = data.id
 
         if (focusedWindowId !== null && focusedWindowId !== undefined) {
-            const newOrder = [];
+            const newOrder = []
             for (let i = 0; i < mruWindowIds.length; i++) {
-                const id = mruWindowIds[i];
+                const id = mruWindowIds[i]
                 if (id !== focusedWindowId) {
-                    newOrder.push(id);
+                    newOrder.push(id)
                 }
             }
-            newOrder.unshift(focusedWindowId);
-            mruWindowIds = newOrder;
+            newOrder.unshift(focusedWindowId)
+            mruWindowIds = newOrder
         }
 
-        let focusedWindow = null;
-        const updatedWindows = [];
-        let hasChanges = false;
+        let focusedWindow = null
+        const updatedWindows = []
+        let hasChanges = false
 
         for (var i = 0; i < windows.length; i++) {
-            const w = windows[i];
-            const shouldBeFocused = (w.id === focusedWindowId);
-
+            const w = windows[i]
+            const shouldBeFocused = (w.id === focusedWindowId)
+            
             if (w.is_focused === shouldBeFocused) {
-                updatedWindows.push(w);
-                if (shouldBeFocused)
-                    focusedWindow = w;
-                continue;
+                updatedWindows.push(w)
+                if (shouldBeFocused) focusedWindow = w
+                continue
             }
 
-            const updatedWindow = {};
+            const updatedWindow = {}
             for (let prop in w) {
-                updatedWindow[prop] = w[prop];
+                updatedWindow[prop] = w[prop]
             }
 
-            updatedWindow.is_focused = shouldBeFocused;
+            updatedWindow.is_focused = shouldBeFocused
             if (shouldBeFocused) {
-                focusedWindow = updatedWindow;
+                focusedWindow = updatedWindow
             }
 
-            updatedWindows.push(updatedWindow);
-            hasChanges = true;
+            updatedWindows.push(updatedWindow)
+            hasChanges = true
         }
 
-        if (hasChanges)
-            windows = updatedWindows;
+        if (hasChanges) windows = updatedWindows
 
         // Update activeWindow (signal is auto-emitted on property change)
         if (activeWindow !== focusedWindow) {
-            activeWindow = focusedWindow;
+            activeWindow = focusedWindow
         }
 
         if (focusedWindow) {
-            const ws = root.workspaces[focusedWindow.workspace_id];
+            const ws = root.workspaces[focusedWindow.workspace_id]
             if (ws && ws.active_window_id !== focusedWindowId) {
-                const updatedWs = {};
+                const updatedWs = {}
                 for (let prop in ws) {
-                    updatedWs[prop] = ws[prop];
+                    updatedWs[prop] = ws[prop]
                 }
-                updatedWs.active_window_id = focusedWindowId;
+                updatedWs.active_window_id = focusedWindowId
 
-                const updatedWorkspaces = {};
+                const updatedWorkspaces = {}
                 for (const id in root.workspaces) {
-                    updatedWorkspaces[id] = id === focusedWindow.workspace_id ? updatedWs : root.workspaces[id];
+                    updatedWorkspaces[id] = id === focusedWindow.workspace_id ? updatedWs : root.workspaces[id]
                 }
-                root.workspaces = updatedWorkspaces;
+                root.workspaces = updatedWorkspaces
             }
         }
     }
 
     function handleWorkspaceActiveWindowChanged(data) {
-        const ws = root.workspaces[data.workspace_id];
+        const ws = root.workspaces[data.workspace_id]
         if (ws) {
-            const updatedWs = {};
+            const updatedWs = {}
             for (let prop in ws) {
-                updatedWs[prop] = ws[prop];
+                updatedWs[prop] = ws[prop]
             }
-            updatedWs.active_window_id = data.active_window_id;
+            updatedWs.active_window_id = data.active_window_id
 
-            const updatedWorkspaces = {};
+            const updatedWorkspaces = {}
             for (const id in root.workspaces) {
-                updatedWorkspaces[id] = id === data.workspace_id ? updatedWs : root.workspaces[id];
+                updatedWorkspaces[id] = id === data.workspace_id ? updatedWs : root.workspaces[id]
             }
-            root.workspaces = updatedWorkspaces;
+            root.workspaces = updatedWorkspaces
         }
 
         // Optimization: only recreate window objects that actually change
-        const updatedWindows = [];
-        let hasChanges = false;
-        let newActiveWindow = null;
+        const updatedWindows = []
+        let hasChanges = false
+        let newActiveWindow = null
 
         for (var i = 0; i < windows.length; i++) {
-            const w = windows[i];
-            let shouldBeFocused;
-
+            const w = windows[i]
+            let shouldBeFocused
+            
             if (data.active_window_id !== null && data.active_window_id !== undefined) {
-                shouldBeFocused = (w.id == data.active_window_id);
+                shouldBeFocused = (w.id == data.active_window_id)
             } else {
-                shouldBeFocused = w.workspace_id == data.workspace_id ? false : w.is_focused;
+                shouldBeFocused = w.workspace_id == data.workspace_id ? false : w.is_focused
             }
 
             // Only create new object if focus state actually changed
             if (w.is_focused === shouldBeFocused) {
-                updatedWindows.push(w);
-                if (shouldBeFocused)
-                    newActiveWindow = w;
+                updatedWindows.push(w)
+                if (shouldBeFocused) newActiveWindow = w
             } else {
-                const updatedWindow = {};
+                const updatedWindow = {}
                 for (let prop in w) {
-                    updatedWindow[prop] = w[prop];
+                    updatedWindow[prop] = w[prop]
                 }
-                updatedWindow.is_focused = shouldBeFocused;
-                updatedWindows.push(updatedWindow);
-                if (shouldBeFocused)
-                    newActiveWindow = updatedWindow;
-                hasChanges = true;
+                updatedWindow.is_focused = shouldBeFocused
+                updatedWindows.push(updatedWindow)
+                if (shouldBeFocused) newActiveWindow = updatedWindow
+                hasChanges = true
             }
         }
 
         if (hasChanges) {
-            windows = updatedWindows;
+            windows = updatedWindows
         }
-
+        
         // Update activeWindow (signal is auto-emitted on property change)
         if (activeWindow !== newActiveWindow) {
-            activeWindow = newActiveWindow;
+            activeWindow = newActiveWindow
         }
     }
 
     function handleWindowsChanged(data) {
-        scheduleWindowsUpdate(data.windows);
+        scheduleWindowsUpdate(data.windows)
     }
 
     function handleWindowClosed(data) {
-        const currentList = _windowsDirty ? _pendingWindows : windows;
-        const updatedWindows = currentList.filter(w => w.id !== data.id);
-        scheduleWindowsUpdate(updatedWindows);
+        const currentList = _windowsDirty ? _pendingWindows : windows
+        const updatedWindows = currentList.filter(w => w.id !== data.id)
+        scheduleWindowsUpdate(updatedWindows)
 
         if (mruWindowIds && mruWindowIds.length > 0) {
-            mruWindowIds = mruWindowIds.filter(id => id !== data.id);
+            mruWindowIds = mruWindowIds.filter(id => id !== data.id)
         }
     }
 
     function handleWindowOpenedOrChanged(data) {
         if (!data.window)
-            return;
-        const window = data.window;
-        const currentList = _windowsDirty ? _pendingWindows : windows;
-        const existingIndex = currentList.findIndex(w => w.id === window.id);
-        let updatedWindows;
+            return
+
+        const window = data.window
+        const currentList = _windowsDirty ? _pendingWindows : windows
+        const existingIndex = currentList.findIndex(w => w.id === window.id)
+        let updatedWindows
 
         if (existingIndex >= 0) {
-            updatedWindows = [...currentList];
-            updatedWindows[existingIndex] = window;
+            updatedWindows = [...currentList]
+            updatedWindows[existingIndex] = window
         } else {
-            updatedWindows = [...currentList, window];
+            updatedWindows = [...currentList, window]
         }
-
-        scheduleWindowsUpdate(updatedWindows);
+        
+        scheduleWindowsUpdate(updatedWindows)
     }
 
     // Batching para actualizaciones de ventanas
@@ -471,1121 +464,683 @@ Singleton {
         repeat: false
         onTriggered: {
             if (_windowsDirty) {
-                windows = sortWindowsByLayout(_pendingWindows);
-                _windowsDirty = false;
+                windows = sortWindowsByLayout(_pendingWindows)
+                _windowsDirty = false
             }
         }
     }
 
     function scheduleWindowsUpdate(newWindowsList) {
-        _pendingWindows = newWindowsList;
-        _windowsDirty = true;
+        _pendingWindows = newWindowsList
+        _windowsDirty = true
         if (!windowsUpdateTimer.running) {
-            windowsUpdateTimer.restart();
+            windowsUpdateTimer.restart()
         }
     }
 
     function handleWindowLayoutsChanged(data) {
         if (!data.changes)
-            return;
+            return
 
         // Usar _pendingWindows si hay cambios pendientes, o windows actual
-        const currentList = _windowsDirty ? _pendingWindows : windows;
-        const updatedWindows = [...currentList];
-        let hasChanges = false;
+        const currentList = _windowsDirty ? _pendingWindows : windows
+        const updatedWindows = [...currentList]
+        let hasChanges = false
 
         for (const change of data.changes) {
-            const windowId = change[0];
-            const layoutData = change[1];
+            const windowId = change[0]
+            const layoutData = change[1]
 
-            const windowIndex = updatedWindows.findIndex(w => w.id === windowId);
+            const windowIndex = updatedWindows.findIndex(w => w.id === windowId)
             if (windowIndex < 0)
-                continue;
-            const updatedWindow = {};
+                continue
+
+            const updatedWindow = {}
             for (var prop in updatedWindows[windowIndex]) {
-                updatedWindow[prop] = updatedWindows[windowIndex][prop];
+                updatedWindow[prop] = updatedWindows[windowIndex][prop]
             }
-            updatedWindow.layout = layoutData;
-            updatedWindows[windowIndex] = updatedWindow;
-            hasChanges = true;
+            updatedWindow.layout = layoutData
+            updatedWindows[windowIndex] = updatedWindow
+            hasChanges = true
         }
 
         if (!hasChanges)
-            return;
-        scheduleWindowsUpdate(updatedWindows);
+            return
+
+        scheduleWindowsUpdate(updatedWindows)
     }
 
     function handleOutputsChanged(data) {
         if (!data.outputs)
-            return;
-        outputs = data.outputs;
-        updateDisplayScales();
+            return
+        outputs = data.outputs
+        updateDisplayScales()
         // Force immediate update for outputs as it affects geometry calculations significantly
-        windows = sortWindowsByLayout(windows);
+        windows = sortWindowsByLayout(windows) 
     }
 
     function handleOverviewChanged(data) {
-        inOverview = data.is_open;
+        inOverview = data.is_open
     }
 
     function handleConfigLoaded(data) {
-        const failed = data && data.failed;
-        configLoaded = !failed;
-        configLoadFailed = !!failed;
-        configError = (failed && data && data.error) ? data.error : "";
+        const failed = data && data.failed
+        configLoaded = !failed
+        configLoadFailed = !!failed
+        configError = (failed && data && data.error) ? data.error : ""
 
         if (!failed)
-            fetchOutputs();
+            fetchOutputs()
 
-        configLoadFinished(!failed, configError);
+        configLoadFinished(!failed, configError)
     }
 
     function handleKeyboardLayoutsChanged(data) {
-        keyboardLayoutNames = data.keyboard_layouts.names;
-        currentKeyboardLayoutIndex = data.keyboard_layouts.current_idx;
+        keyboardLayoutNames = data.keyboard_layouts.names
+        currentKeyboardLayoutIndex = data.keyboard_layouts.current_idx
     }
 
     function handleKeyboardLayoutSwitched(data) {
-        currentKeyboardLayoutIndex = data.idx;
+        currentKeyboardLayoutIndex = data.idx
     }
 
     function handleWorkspaceUrgencyChanged(data) {
-        const ws = root.workspaces[data.id];
+        const ws = root.workspaces[data.id]
         if (!ws)
-            return;
-        const updatedWs = {};
+            return
+
+        const updatedWs = {}
         for (let prop in ws) {
-            updatedWs[prop] = ws[prop];
+            updatedWs[prop] = ws[prop]
         }
-        updatedWs.is_urgent = data.urgent;
+        updatedWs.is_urgent = data.urgent
 
-        const updatedWorkspaces = {};
+        const updatedWorkspaces = {}
         for (const id in root.workspaces) {
-            updatedWorkspaces[id] = id === data.id ? updatedWs : root.workspaces[id];
+            updatedWorkspaces[id] = id === data.id ? updatedWs : root.workspaces[id]
         }
-        root.workspaces = updatedWorkspaces;
+        root.workspaces = updatedWorkspaces
 
-        allWorkspaces = Object.values(updatedWorkspaces).sort((a, b) => a.idx - b.idx);
+        allWorkspaces = Object.values(updatedWorkspaces).sort((a, b) => a.idx - b.idx)
 
-        windowUrgentChanged();
+        windowUrgentChanged()
     }
 
     function updateCurrentOutputWorkspaces() {
         if (!currentOutput) {
-            currentOutputWorkspaces = allWorkspaces;
-            return;
+            currentOutputWorkspaces = allWorkspaces
+            return
         }
 
-        const outputWs = allWorkspaces.filter(w => w.output === currentOutput);
-        currentOutputWorkspaces = outputWs;
+        const outputWs = allWorkspaces.filter(w => w.output === currentOutput)
+        currentOutputWorkspaces = outputWs
     }
 
     function workspacePreviewPath(wsId) {
         // Ruta de snapshot legacy (no usada)
-        return "/tmp/qs-niri-preview-" + wsId + ".png";
+        return "/tmp/qs-niri-preview-" + wsId + ".png"
     }
 
     // Stub: snapshots desactivados; mantenido para no romper llamadas previas.
     function snapshotWorkspace(wsId, force) {
-        return;
+        return
     }
 
     function send(request) {
         if (!requestSocket.connected)
-            return false;
-        requestSocket.send(request);
-        return true;
+            return false
+        requestSocket.send(request)
+        return true
     }
 
     function toggleOverview() {
         return send({
-            "Action": {
-                "ToggleOverview": {}
-            }
-        });
+                        "Action": {
+                            "ToggleOverview": {}
+                        }
+                    })
     }
 
     function switchToWorkspace(workspaceIndex) {
         return send({
-            "Action": {
-                "FocusWorkspace": {
-                    "reference": {
-                        "Index": workspaceIndex
-                    }
-                }
-            }
-        });
+                        "Action": {
+                            "FocusWorkspace": {
+                                "reference": {
+                                    "Index": workspaceIndex
+                                }
+                            }
+                        }
+                    })
     }
 
     function focusWindow(windowId) {
         return send({
-            "Action": {
-                "FocusWindow": {
-                    "id": windowId
-                }
-            }
-        });
+                        "Action": {
+                            "FocusWindow": {
+                                "id": windowId
+                            }
+                        }
+                    })
     }
 
     function moveWindowToWorkspace(windowId, workspaceIndex, focus) {
         // First focus the target window so MoveWindowToWorkspace acts on it.
         send({
-            "Action": {
-                "FocusWindow": {
-                    "id": windowId
-                }
-            }
-        });
+                  "Action": {
+                      "FocusWindow": {
+                          "id": windowId
+                      }
+                  }
+              })
 
         return send({
-            "Action": {
-                "MoveWindowToWorkspace": {
-                    "window_id": null,
-                    "reference": {
-                        "Index": workspaceIndex
-                    },
-                    "focus": focus === undefined ? false : focus
-                }
-            }
-        });
+                        "Action": {
+                            "MoveWindowToWorkspace": {
+                                "window_id": null,
+                                "reference": {
+                                    "Index": workspaceIndex
+                                },
+                                "focus": focus === undefined ? false : focus
+                            }
+                        }
+                    })
     }
 
     function closeWindow(windowId) {
         return send({
-            "Action": {
-                "CloseWindow": {
-                    "id": windowId
-                }
-            }
-        });
+                        "Action": {
+                            "CloseWindow": {
+                                "id": windowId
+                            }
+                        }
+                    })
     }
 
     function powerOffMonitors() {
         return send({
-            "Action": {
-                "PowerOffMonitors": {}
-            }
-        });
+                        "Action": {
+                            "PowerOffMonitors": {}
+                        }
+                    })
     }
 
     function powerOnMonitors() {
         return send({
-            "Action": {
-                "PowerOnMonitors": {}
-            }
-        });
+                        "Action": {
+                            "PowerOnMonitors": {}
+                        }
+                    })
     }
 
     function quit() {
         return send({
-            "Action": {
-                "Quit": {
-                    "skip_confirmation": true
-                }
-            }
-        });
+                        "Action": {
+                            "Quit": {
+                                "skip_confirmation": true
+                            }
+                        }
+                    })
     }
 
     // ========== WORKSPACE NAVIGATION ==========
     function focusWorkspaceUp() {
-        return send({
-            "Action": {
-                "FocusWorkspaceUp": {}
-            }
-        });
+        return send({ "Action": { "FocusWorkspaceUp": {} } })
     }
     function focusWorkspaceDown() {
-        return send({
-            "Action": {
-                "FocusWorkspaceDown": {}
-            }
-        });
+        return send({ "Action": { "FocusWorkspaceDown": {} } })
     }
     function focusWorkspacePrevious() {
-        return send({
-            "Action": {
-                "FocusWorkspacePrevious": {}
-            }
-        });
+        return send({ "Action": { "FocusWorkspacePrevious": {} } })
     }
 
     // ========== COLUMN/WINDOW FOCUS ==========
     function focusColumnLeft() {
-        return send({
-            "Action": {
-                "FocusColumnLeft": {}
-            }
-        });
+        return send({ "Action": { "FocusColumnLeft": {} } })
     }
     function focusColumnRight() {
-        return send({
-            "Action": {
-                "FocusColumnRight": {}
-            }
-        });
+        return send({ "Action": { "FocusColumnRight": {} } })
     }
     function focusColumnFirst() {
-        return send({
-            "Action": {
-                "FocusColumnFirst": {}
-            }
-        });
+        return send({ "Action": { "FocusColumnFirst": {} } })
     }
     function focusColumnLast() {
-        return send({
-            "Action": {
-                "FocusColumnLast": {}
-            }
-        });
+        return send({ "Action": { "FocusColumnLast": {} } })
     }
     function focusColumn(index) {
-        return send({
-            "Action": {
-                "FocusColumn": {
-                    "index": index
-                }
-            }
-        });
+        return send({ "Action": { "FocusColumn": { "index": index } } })
     }
     function focusWindowUp() {
-        return send({
-            "Action": {
-                "FocusWindowUp": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowUp": {} } })
     }
     function focusWindowDown() {
-        return send({
-            "Action": {
-                "FocusWindowDown": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowDown": {} } })
     }
     function focusWindowTop() {
-        return send({
-            "Action": {
-                "FocusWindowTop": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowTop": {} } })
     }
     function focusWindowBottom() {
-        return send({
-            "Action": {
-                "FocusWindowBottom": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowBottom": {} } })
     }
     function focusWindowPrevious() {
-        return send({
-            "Action": {
-                "FocusWindowPrevious": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowPrevious": {} } })
     }
     function focusWindowInColumn(index) {
-        return send({
-            "Action": {
-                "FocusWindowInColumn": {
-                    "index": index
-                }
-            }
-        });
+        return send({ "Action": { "FocusWindowInColumn": { "index": index } } })
     }
 
     // ========== COLUMN MOVEMENT ==========
     function moveColumnLeft() {
-        return send({
-            "Action": {
-                "MoveColumnLeft": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnLeft": {} } })
     }
     function moveColumnRight() {
-        return send({
-            "Action": {
-                "MoveColumnRight": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnRight": {} } })
     }
     function moveColumnToFirst() {
-        return send({
-            "Action": {
-                "MoveColumnToFirst": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnToFirst": {} } })
     }
     function moveColumnToLast() {
-        return send({
-            "Action": {
-                "MoveColumnToLast": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnToLast": {} } })
     }
     function moveColumnToIndex(index) {
-        return send({
-            "Action": {
-                "MoveColumnToIndex": {
-                    "index": index
-                }
-            }
-        });
+        return send({ "Action": { "MoveColumnToIndex": { "index": index } } })
     }
     function moveColumnToWorkspaceUp() {
-        return send({
-            "Action": {
-                "MoveColumnToWorkspaceUp": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnToWorkspaceUp": {} } })
     }
     function moveColumnToWorkspaceDown() {
-        return send({
-            "Action": {
-                "MoveColumnToWorkspaceDown": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnToWorkspaceDown": {} } })
     }
     function moveColumnToWorkspace(index) {
-        return send({
-            "Action": {
-                "MoveColumnToWorkspace": {
-                    "reference": {
-                        "Index": index
-                    }
-                }
-            }
-        });
+        return send({ "Action": { "MoveColumnToWorkspace": { "reference": { "Index": index } } } })
     }
 
     // ========== WINDOW MOVEMENT ==========
     function moveWindowUp() {
-        return send({
-            "Action": {
-                "MoveWindowUp": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowUp": {} } })
     }
     function moveWindowDown() {
-        return send({
-            "Action": {
-                "MoveWindowDown": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowDown": {} } })
     }
     function moveWindowToWorkspaceUp() {
-        return send({
-            "Action": {
-                "MoveWindowToWorkspaceUp": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToWorkspaceUp": {} } })
     }
     function moveWindowToWorkspaceDown() {
-        return send({
-            "Action": {
-                "MoveWindowToWorkspaceDown": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToWorkspaceDown": {} } })
     }
     function swapWindowLeft() {
-        return send({
-            "Action": {
-                "SwapWindowLeft": {}
-            }
-        });
+        return send({ "Action": { "SwapWindowLeft": {} } })
     }
     function swapWindowRight() {
-        return send({
-            "Action": {
-                "SwapWindowRight": {}
-            }
-        });
+        return send({ "Action": { "SwapWindowRight": {} } })
     }
 
     // ========== WINDOW STATE ==========
     function fullscreenWindow() {
-        return send({
-            "Action": {
-                "FullscreenWindow": {}
-            }
-        });
+        return send({ "Action": { "FullscreenWindow": {} } })
     }
     function toggleWindowedFullscreen() {
-        return send({
-            "Action": {
-                "ToggleWindowedFullscreen": {}
-            }
-        });
+        return send({ "Action": { "ToggleWindowedFullscreen": {} } })
     }
     function toggleWindowFloating() {
-        return send({
-            "Action": {
-                "ToggleWindowFloating": {}
-            }
-        });
+        return send({ "Action": { "ToggleWindowFloating": {} } })
     }
     function moveWindowToFloating() {
-        return send({
-            "Action": {
-                "MoveWindowToFloating": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToFloating": {} } })
     }
     function moveWindowToTiling() {
-        return send({
-            "Action": {
-                "MoveWindowToTiling": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToTiling": {} } })
     }
     function focusFloating() {
-        return send({
-            "Action": {
-                "FocusFloating": {}
-            }
-        });
+        return send({ "Action": { "FocusFloating": {} } })
     }
     function focusTiling() {
-        return send({
-            "Action": {
-                "FocusTiling": {}
-            }
-        });
+        return send({ "Action": { "FocusTiling": {} } })
     }
     function switchFocusBetweenFloatingAndTiling() {
-        return send({
-            "Action": {
-                "SwitchFocusBetweenFloatingAndTiling": {}
-            }
-        });
+        return send({ "Action": { "SwitchFocusBetweenFloatingAndTiling": {} } })
     }
 
     // ========== COLUMN STATE ==========
     function maximizeColumn() {
-        return send({
-            "Action": {
-                "MaximizeColumn": {}
-            }
-        });
+        return send({ "Action": { "MaximizeColumn": {} } })
     }
     function centerColumn() {
-        return send({
-            "Action": {
-                "CenterColumn": {}
-            }
-        });
+        return send({ "Action": { "CenterColumn": {} } })
     }
     function centerWindow() {
-        return send({
-            "Action": {
-                "CenterWindow": {}
-            }
-        });
+        return send({ "Action": { "CenterWindow": {} } })
     }
     function centerVisibleColumns() {
-        return send({
-            "Action": {
-                "CenterVisibleColumns": {}
-            }
-        });
+        return send({ "Action": { "CenterVisibleColumns": {} } })
     }
     function expandColumnToAvailableWidth() {
-        return send({
-            "Action": {
-                "ExpandColumnToAvailableWidth": {}
-            }
-        });
+        return send({ "Action": { "ExpandColumnToAvailableWidth": {} } })
     }
     function toggleColumnTabbedDisplay() {
-        return send({
-            "Action": {
-                "ToggleColumnTabbedDisplay": {}
-            }
-        });
+        return send({ "Action": { "ToggleColumnTabbedDisplay": {} } })
     }
     function consumeWindowIntoColumn() {
-        return send({
-            "Action": {
-                "ConsumeWindowIntoColumn": {}
-            }
-        });
+        return send({ "Action": { "ConsumeWindowIntoColumn": {} } })
     }
     function expelWindowFromColumn() {
-        return send({
-            "Action": {
-                "ExpelWindowFromColumn": {}
-            }
-        });
+        return send({ "Action": { "ExpelWindowFromColumn": {} } })
     }
     function consumeOrExpelWindowLeft() {
-        return send({
-            "Action": {
-                "ConsumeOrExpelWindowLeft": {}
-            }
-        });
+        return send({ "Action": { "ConsumeOrExpelWindowLeft": {} } })
     }
     function consumeOrExpelWindowRight() {
-        return send({
-            "Action": {
-                "ConsumeOrExpelWindowRight": {}
-            }
-        });
+        return send({ "Action": { "ConsumeOrExpelWindowRight": {} } })
     }
 
     // ========== SIZING ==========
     function setColumnWidth(change) {
-        return send({
-            "Action": {
-                "SetColumnWidth": change
-            }
-        });
+        return send({ "Action": { "SetColumnWidth": change } })
     }
     function setWindowHeight(change) {
-        return send({
-            "Action": {
-                "SetWindowHeight": change
-            }
-        });
+        return send({ "Action": { "SetWindowHeight": change } })
     }
     function setWindowWidth(change) {
-        return send({
-            "Action": {
-                "SetWindowWidth": change
-            }
-        });
+        return send({ "Action": { "SetWindowWidth": change } })
     }
     function resetWindowHeight() {
-        return send({
-            "Action": {
-                "ResetWindowHeight": {}
-            }
-        });
+        return send({ "Action": { "ResetWindowHeight": {} } })
     }
     function switchPresetColumnWidth() {
-        return send({
-            "Action": {
-                "SwitchPresetColumnWidth": {}
-            }
-        });
+        return send({ "Action": { "SwitchPresetColumnWidth": {} } })
     }
     function switchPresetColumnWidthBack() {
-        return send({
-            "Action": {
-                "SwitchPresetColumnWidthBack": {}
-            }
-        });
+        return send({ "Action": { "SwitchPresetColumnWidthBack": {} } })
     }
     function switchPresetWindowHeight() {
-        return send({
-            "Action": {
-                "SwitchPresetWindowHeight": {}
-            }
-        });
+        return send({ "Action": { "SwitchPresetWindowHeight": {} } })
     }
     function switchPresetWindowHeightBack() {
-        return send({
-            "Action": {
-                "SwitchPresetWindowHeightBack": {}
-            }
-        });
+        return send({ "Action": { "SwitchPresetWindowHeightBack": {} } })
     }
     function maximizeWindowToEdges() {
-        return send({
-            "Action": {
-                "MaximizeWindowToEdges": {}
-            }
-        });
+        return send({ "Action": { "MaximizeWindowToEdges": {} } })
     }
 
     // ========== MONITOR FOCUS ==========
     function focusMonitorLeft() {
-        return send({
-            "Action": {
-                "FocusMonitorLeft": {}
-            }
-        });
+        return send({ "Action": { "FocusMonitorLeft": {} } })
     }
     function focusMonitorRight() {
-        return send({
-            "Action": {
-                "FocusMonitorRight": {}
-            }
-        });
+        return send({ "Action": { "FocusMonitorRight": {} } })
     }
     function focusMonitorUp() {
-        return send({
-            "Action": {
-                "FocusMonitorUp": {}
-            }
-        });
+        return send({ "Action": { "FocusMonitorUp": {} } })
     }
     function focusMonitorDown() {
-        return send({
-            "Action": {
-                "FocusMonitorDown": {}
-            }
-        });
+        return send({ "Action": { "FocusMonitorDown": {} } })
     }
     function focusMonitorPrevious() {
-        return send({
-            "Action": {
-                "FocusMonitorPrevious": {}
-            }
-        });
+        return send({ "Action": { "FocusMonitorPrevious": {} } })
     }
     function focusMonitorNext() {
-        return send({
-            "Action": {
-                "FocusMonitorNext": {}
-            }
-        });
+        return send({ "Action": { "FocusMonitorNext": {} } })
     }
     function focusMonitor(name) {
-        return send({
-            "Action": {
-                "FocusMonitor": {
-                    "output": name
-                }
-            }
-        });
+        return send({ "Action": { "FocusMonitor": { "output": name } } })
     }
 
     // ========== MOVE TO MONITOR ==========
     function moveWindowToMonitorLeft() {
-        return send({
-            "Action": {
-                "MoveWindowToMonitorLeft": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToMonitorLeft": {} } })
     }
     function moveWindowToMonitorRight() {
-        return send({
-            "Action": {
-                "MoveWindowToMonitorRight": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToMonitorRight": {} } })
     }
     function moveWindowToMonitorUp() {
-        return send({
-            "Action": {
-                "MoveWindowToMonitorUp": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToMonitorUp": {} } })
     }
     function moveWindowToMonitorDown() {
-        return send({
-            "Action": {
-                "MoveWindowToMonitorDown": {}
-            }
-        });
+        return send({ "Action": { "MoveWindowToMonitorDown": {} } })
     }
     function moveWindowToMonitor(name) {
-        return send({
-            "Action": {
-                "MoveWindowToMonitor": {
-                    "output": name
-                }
-            }
-        });
+        return send({ "Action": { "MoveWindowToMonitor": { "output": name } } })
     }
     function moveColumnToMonitorLeft() {
-        return send({
-            "Action": {
-                "MoveColumnToMonitorLeft": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnToMonitorLeft": {} } })
     }
     function moveColumnToMonitorRight() {
-        return send({
-            "Action": {
-                "MoveColumnToMonitorRight": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnToMonitorRight": {} } })
     }
     function moveColumnToMonitor(name) {
-        return send({
-            "Action": {
-                "MoveColumnToMonitor": {
-                    "output": name
-                }
-            }
-        });
+        return send({ "Action": { "MoveColumnToMonitor": { "output": name } } })
     }
 
     // ========== WORKSPACE MANAGEMENT ==========
     function moveWorkspaceUp() {
-        return send({
-            "Action": {
-                "MoveWorkspaceUp": {}
-            }
-        });
+        return send({ "Action": { "MoveWorkspaceUp": {} } })
     }
     function moveWorkspaceDown() {
-        return send({
-            "Action": {
-                "MoveWorkspaceDown": {}
-            }
-        });
+        return send({ "Action": { "MoveWorkspaceDown": {} } })
     }
     function moveWorkspaceToIndex(index) {
-        return send({
-            "Action": {
-                "MoveWorkspaceToIndex": {
-                    "index": index
-                }
-            }
-        });
+        return send({ "Action": { "MoveWorkspaceToIndex": { "index": index } } })
     }
     function moveWorkspaceToMonitor(name) {
-        return send({
-            "Action": {
-                "MoveWorkspaceToMonitor": {
-                    "output": name
-                }
-            }
-        });
+        return send({ "Action": { "MoveWorkspaceToMonitor": { "output": name } } })
     }
     function setWorkspaceName(name) {
-        return send({
-            "Action": {
-                "SetWorkspaceName": {
-                    "name": name
-                }
-            }
-        });
+        return send({ "Action": { "SetWorkspaceName": { "name": name } } })
     }
     function unsetWorkspaceName() {
-        return send({
-            "Action": {
-                "UnsetWorkspaceName": {}
-            }
-        });
+        return send({ "Action": { "UnsetWorkspaceName": {} } })
     }
 
     // ========== OVERVIEW ==========
     function openOverview() {
-        return send({
-            "Action": {
-                "OpenOverview": {}
-            }
-        });
+        return send({ "Action": { "OpenOverview": {} } })
     }
     function closeOverview() {
-        return send({
-            "Action": {
-                "CloseOverview": {}
-            }
-        });
+        return send({ "Action": { "CloseOverview": {} } })
     }
 
     // ========== SCREENSHOTS ==========
     function screenshot() {
-        return send({
-            "Action": {
-                "Screenshot": {}
-            }
-        });
+        return send({ "Action": { "Screenshot": {} } })
     }
     function screenshotScreen() {
-        return send({
-            "Action": {
-                "ScreenshotScreen": {}
-            }
-        });
+        return send({ "Action": { "ScreenshotScreen": {} } })
     }
     function screenshotWindow() {
-        return send({
-            "Action": {
-                "ScreenshotWindow": {}
-            }
-        });
+        return send({ "Action": { "ScreenshotWindow": {} } })
     }
 
     // ========== SPAWN ==========
     function spawn(args) {
-        return send({
-            "Action": {
-                "Spawn": {
-                    "command": args
-                }
-            }
-        });
+        return send({ "Action": { "Spawn": { "command": args } } })
     }
     function spawnSh(command) {
-        return send({
-            "Action": {
-                "SpawnSh": {
-                    "command": command
-                }
-            }
-        });
+        return send({ "Action": { "SpawnSh": { "command": command } } })
     }
 
     // ========== KEYBOARD ==========
     function switchLayout() {
-        return send({
-            "Action": {
-                "SwitchLayout": {
-                    "layout": "Next"
-                }
-            }
-        });
+        return send({ "Action": { "SwitchLayout": { "layout": "Next" } } })
     }
     function switchLayoutPrevious() {
-        return send({
-            "Action": {
-                "SwitchLayout": {
-                    "layout": "Prev"
-                }
-            }
-        });
+        return send({ "Action": { "SwitchLayout": { "layout": "Prev" } } })
     }
     function switchLayoutByName(name) {
-        return send({
-            "Action": {
-                "SwitchLayout": {
-                    "layout": {
-                        "Name": name
-                    }
-                }
-            }
-        });
+        return send({ "Action": { "SwitchLayout": { "layout": { "Name": name } } } })
     }
 
     // ========== MISC ==========
     function showHotkeyOverlay() {
-        return send({
-            "Action": {
-                "ShowHotkeyOverlay": {}
-            }
-        });
+        return send({ "Action": { "ShowHotkeyOverlay": {} } })
     }
     function doScreenTransition() {
-        return send({
-            "Action": {
-                "DoScreenTransition": {}
-            }
-        });
+        return send({ "Action": { "DoScreenTransition": {} } })
     }
     function loadConfigFile() {
-        return send({
-            "Action": {
-                "LoadConfigFile": {}
-            }
-        });
+        return send({ "Action": { "LoadConfigFile": {} } })
     }
     function toggleKeyboardShortcutsInhibit() {
-        return send({
-            "Action": {
-                "ToggleKeyboardShortcutsInhibit": {}
-            }
-        });
+        return send({ "Action": { "ToggleKeyboardShortcutsInhibit": {} } })
     }
     function toggleWindowRuleOpacity() {
-        return send({
-            "Action": {
-                "ToggleWindowRuleOpacity": {}
-            }
-        });
+        return send({ "Action": { "ToggleWindowRuleOpacity": {} } })
     }
     function setWindowUrgent(id, urgent) {
-        return send({
-            "Action": {
-                "SetWindowUrgent": {
-                    "id": id,
-                    "urgent": urgent
-                }
-            }
-        });
+        return send({ "Action": { "SetWindowUrgent": { "id": id, "urgent": urgent } } })
     }
     function toggleWindowUrgent(id) {
-        return send({
-            "Action": {
-                "ToggleWindowUrgent": {
-                    "id": id
-                }
-            }
-        });
+        return send({ "Action": { "ToggleWindowUrgent": { "id": id } } })
     }
 
     // ========== COMBINED ACTIONS (convenience) ==========
     function focusColumnOrMonitorLeft() {
-        return send({
-            "Action": {
-                "FocusColumnOrMonitorLeft": {}
-            }
-        });
+        return send({ "Action": { "FocusColumnOrMonitorLeft": {} } })
     }
     function focusColumnOrMonitorRight() {
-        return send({
-            "Action": {
-                "FocusColumnOrMonitorRight": {}
-            }
-        });
+        return send({ "Action": { "FocusColumnOrMonitorRight": {} } })
     }
     function focusWindowOrMonitorUp() {
-        return send({
-            "Action": {
-                "FocusWindowOrMonitorUp": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowOrMonitorUp": {} } })
     }
     function focusWindowOrMonitorDown() {
-        return send({
-            "Action": {
-                "FocusWindowOrMonitorDown": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowOrMonitorDown": {} } })
     }
     function focusWindowOrWorkspaceUp() {
-        return send({
-            "Action": {
-                "FocusWindowOrWorkspaceUp": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowOrWorkspaceUp": {} } })
     }
     function focusWindowOrWorkspaceDown() {
-        return send({
-            "Action": {
-                "FocusWindowOrWorkspaceDown": {}
-            }
-        });
+        return send({ "Action": { "FocusWindowOrWorkspaceDown": {} } })
     }
     function moveColumnLeftOrToMonitorLeft() {
-        return send({
-            "Action": {
-                "MoveColumnLeftOrToMonitorLeft": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnLeftOrToMonitorLeft": {} } })
     }
     function moveColumnRightOrToMonitorRight() {
-        return send({
-            "Action": {
-                "MoveColumnRightOrToMonitorRight": {}
-            }
-        });
+        return send({ "Action": { "MoveColumnRightOrToMonitorRight": {} } })
     }
 
     function getCurrentOutputWorkspaceNumbers() {
         // Niri workspaces already expose a 1-based idx for their position on the monitor.
         // Use idx directly as the workspace number for the current output.
-        return currentOutputWorkspaces.map(w => w.idx);
+        return currentOutputWorkspaces.map(w => w.idx)
     }
 
     function getCurrentWorkspaceNumber() {
         // Return the 1-based idx of the focused workspace on the current output.
         if (focusedWorkspaceIndex >= 0 && focusedWorkspaceIndex < allWorkspaces.length) {
-            return allWorkspaces[focusedWorkspaceIndex].idx;
+            return allWorkspaces[focusedWorkspaceIndex].idx
         }
         // Fallback to the first workspace index if nothing is focused.
-        return 1;
+        return 1
     }
 
     function getCurrentKeyboardLayoutName() {
         if (currentKeyboardLayoutIndex >= 0 && currentKeyboardLayoutIndex < keyboardLayoutNames.length) {
-            return keyboardLayoutNames[currentKeyboardLayoutIndex];
+            return keyboardLayoutNames[currentKeyboardLayoutIndex]
         }
-        return "";
+        return ""
     }
 
     function findNiriWindow(toplevel) {
         if (!toplevel.appId)
-            return null;
+            return null
 
         for (var j = 0; j < windows.length; j++) {
-            const niriWindow = windows[j];
+            const niriWindow = windows[j]
             if (niriWindow.app_id === toplevel.appId) {
                 if (!niriWindow.title || niriWindow.title === toplevel.title) {
                     return {
                         "niriIndex": j,
                         "niriWindow": niriWindow
-                    };
+                    }
                 }
             }
         }
-        return null;
+        return null
     }
 
     function sortToplevels(toplevels) {
         if (!toplevels || toplevels.length === 0 || windows.length === 0) {
-            return [...toplevels];
+            return [...toplevels]
         }
 
-        const usedToplevels = new Set();
-        const enrichedToplevels = [];
+        const usedToplevels = new Set()
+        const enrichedToplevels = []
 
         for (const niriWindow of sortWindowsByLayout(windows)) {
-            let bestMatch = null;
-            let bestScore = -1;
+            let bestMatch = null
+            let bestScore = -1
 
             for (const toplevel of toplevels) {
                 if (usedToplevels.has(toplevel))
-                    continue;
-                const score = matchToplevelToWindow(toplevel, niriWindow);
+                    continue
+
+                const score = matchToplevelToWindow(toplevel, niriWindow)
                 if (score > bestScore) {
-                    bestScore = score;
-                    bestMatch = toplevel;
+                    bestScore = score
+                    bestMatch = toplevel
                     if (score === 3)
-                        break;
+                        break
                 }
             }
 
             if (!bestMatch)
-                continue;
-            usedToplevels.add(bestMatch);
-            enrichedToplevels.push(enrichToplevel(bestMatch, niriWindow));
+                continue
+
+            usedToplevels.add(bestMatch)
+            enrichedToplevels.push(enrichToplevel(bestMatch, niriWindow))
         }
 
         for (const toplevel of toplevels) {
             if (!usedToplevels.has(toplevel)) {
-                enrichedToplevels.push(toplevel);
+                enrichedToplevels.push(toplevel)
             }
         }
 
-        return enrichedToplevels;
+        return enrichedToplevels
     }
 
     function findWindowByTitle(titlePattern) {
-        const wins = windows || [];
-        const pattern = titlePattern.toLowerCase();
+        const wins = windows || []
+        const pattern = titlePattern.toLowerCase()
         for (let i = 0; i < wins.length; i++) {
-            const w = wins[i];
+            const w = wins[i]
             if (w.title && w.title.toLowerCase().includes(pattern)) {
-                return w;
+                return w
             }
         }
-        return null;
+        return null
     }
 
     function findWindowByAppId(appIdPattern) {
-        const wins = windows || [];
-        const pattern = appIdPattern.toLowerCase();
+        const wins = windows || []
+        const pattern = appIdPattern.toLowerCase()
         for (let i = 0; i < wins.length; i++) {
-            const w = wins[i];
+            const w = wins[i]
             if (w.app_id && w.app_id.toLowerCase().includes(pattern)) {
-                return w;
+                return w
             }
         }
-        return null;
+        return null
     }
 
     function matchToplevelToWindow(toplevel, niriWindow) {
         if (toplevel.appId !== niriWindow.app_id)
-            return 0;
+            return 0
 
-        let score = 1;
+        let score = 1
         if (niriWindow.title && toplevel.title) {
             if (toplevel.title === niriWindow.title) {
-                score = 3;
+                score = 3
             } else if (toplevel.title.includes(niriWindow.title) || niriWindow.title.includes(toplevel.title)) {
-                score = 2;
+                score = 2
             }
         }
-        return score;
+        return score
     }
 
     function enrichToplevel(toplevel, niriWindow) {
-        const workspace = workspaces[niriWindow.workspace_id];
-        const isFocused = niriWindow.is_focused ?? (workspace && workspace.active_window_id === niriWindow.id) ?? false;
-        const windowId = niriWindow.id;
+        const workspace = workspaces[niriWindow.workspace_id]
+        const isFocused = niriWindow.is_focused ?? (workspace && workspace.active_window_id === niriWindow.id) ?? false
+        const windowId = niriWindow.id
 
         const enriched = {
             "appId": toplevel.appId,
@@ -1594,66 +1149,68 @@ Singleton {
             "niriWindowId": windowId,
             "niriWorkspaceId": niriWindow.workspace_id,
             "activate": function () {
-                return NiriService.focusWindow(windowId);
+                return NiriService.focusWindow(windowId)
             },
             "close": function () {
                 if (toplevel.close) {
-                    return toplevel.close();
+                    return toplevel.close()
                 }
-                return false;
-            }
-        };
-
-        for (let prop in toplevel) {
-            if (!(prop in enriched)) {
-                enriched[prop] = toplevel[prop];
+                return false
             }
         }
 
-        return enriched;
+        for (let prop in toplevel) {
+            if (!(prop in enriched)) {
+                enriched[prop] = toplevel[prop]
+            }
+        }
+
+        return enriched
     }
 
     function filterCurrentWorkspace(toplevels, screenName) {
-        let currentWorkspaceId = null;
+        let currentWorkspaceId = null
 
         for (var i = 0; i < allWorkspaces.length; i++) {
-            const ws = allWorkspaces[i];
+            const ws = allWorkspaces[i]
             if (ws.output === screenName && ws.is_active) {
-                currentWorkspaceId = ws.id;
-                break;
+                currentWorkspaceId = ws.id
+                break
             }
         }
 
         if (currentWorkspaceId === null)
-            return toplevels;
+            return toplevels
 
-        const workspaceWindows = windows.filter(niriWindow => niriWindow.workspace_id === currentWorkspaceId);
-        const usedToplevels = new Set();
-        const result = [];
+        const workspaceWindows = windows.filter(niriWindow => niriWindow.workspace_id === currentWorkspaceId)
+        const usedToplevels = new Set()
+        const result = []
 
         for (const niriWindow of workspaceWindows) {
-            let bestMatch = null;
-            let bestScore = -1;
+            let bestMatch = null
+            let bestScore = -1
 
             for (const toplevel of toplevels) {
                 if (usedToplevels.has(toplevel))
-                    continue;
-                const score = matchToplevelToWindow(toplevel, niriWindow);
+                    continue
+
+                const score = matchToplevelToWindow(toplevel, niriWindow)
                 if (score > bestScore) {
-                    bestScore = score;
-                    bestMatch = toplevel;
+                    bestScore = score
+                    bestMatch = toplevel
                     if (score === 3)
-                        break;
+                        break
                 }
             }
 
             if (!bestMatch)
-                continue;
-            usedToplevels.add(bestMatch);
-            result.push(enrichToplevel(bestMatch, niriWindow));
+                continue
+
+            usedToplevels.add(bestMatch)
+            result.push(enrichToplevel(bestMatch, niriWindow))
         }
 
-        return result;
+        return result
     }
 
     // ========== TILING LAYOUTS ==========
@@ -1662,42 +1219,41 @@ Singleton {
     readonly property var layouts: ["off", "master-left", "master-right", "columns", "monocle"]
     readonly property int tilingWindowCount: _currentWorkspaceWindows.length
     readonly property var _currentWorkspaceWindows: {
-        const focusedWs = allWorkspaces.find(ws => ws.is_focused);
-        if (!focusedWs)
-            return [];
-        return windows.filter(w => w.workspace_id === focusedWs.id && !w.is_floating);
+        const focusedWs = allWorkspaces.find(ws => ws.is_focused)
+        if (!focusedWs) return []
+        return windows.filter(w => w.workspace_id === focusedWs.id && !w.is_floating)
     }
 
     signal layoutChanged(string layout)
     signal layoutApplied(string layout, int windowCount)
 
     function cycleLayout(): void {
-        const idx = layouts.indexOf(currentLayout);
-        const nextIdx = (idx + 1) % layouts.length;
-        applyLayout(layouts[nextIdx]);
+        const idx = layouts.indexOf(currentLayout)
+        const nextIdx = (idx + 1) % layouts.length
+        applyLayout(layouts[nextIdx])
     }
 
     function applyLayout(layoutName): void {
-        const wins = _currentWorkspaceWindows;
+        const wins = _currentWorkspaceWindows
         if (wins.length === 0) {
-            currentLayout = layoutName;
-            layoutChanged(layoutName);
-            return;
+            currentLayout = layoutName
+            layoutChanged(layoutName)
+            return
         }
 
         // Reset: expel all windows to separate columns
-        _resetLayout(wins.length);
+        _resetLayout(wins.length)
 
         // Apply layout after reset
-        _layoutTimer.layoutName = layoutName;
-        _layoutTimer.windowCount = wins.length;
-        _layoutTimer.start();
+        _layoutTimer.layoutName = layoutName
+        _layoutTimer.windowCount = wins.length
+        _layoutTimer.start()
     }
 
     function _resetLayout(count): void {
-        focusColumnFirst();
+        focusColumnFirst()
         for (let i = 0; i < count + 2; i++) {
-            expelWindowFromColumn();
+            expelWindowFromColumn()
         }
     }
 
@@ -1708,81 +1264,68 @@ Singleton {
         property int windowCount: 0
         onTriggered: {
             switch (layoutName) {
-            case "master-left":
-                root._applyMasterLeft(windowCount);
-                break;
-            case "master-right":
-                root._applyMasterRight(windowCount);
-                break;
-            case "columns":
-                root._applyColumns(windowCount);
-                break;
-            case "monocle":
-                root._applyMonocle(windowCount);
-                break;
-            default:
-                // "off" - already reset
-                break;
+                case "master-left": root._applyMasterLeft(windowCount); break
+                case "master-right": root._applyMasterRight(windowCount); break
+                case "columns": root._applyColumns(windowCount); break
+                case "monocle": root._applyMonocle(windowCount); break
+                default: break // "off" - already reset
             }
-            root.currentLayout = layoutName;
-            root.layoutChanged(layoutName);
-            root.layoutApplied(layoutName, windowCount);
+            root.currentLayout = layoutName
+            root.layoutChanged(layoutName)
+            root.layoutApplied(layoutName, windowCount)
         }
     }
 
     function _applyMasterLeft(count): void {
-        if (count < 2)
-            return;
+        if (count < 2) return
         // Master en col 0 (50%), stack en col 1
-        focusColumnFirst();
-        setColumnWidth("50%");
-        focusColumnRight();
+        focusColumnFirst()
+        setColumnWidth("50%")
+        focusColumnRight()
         // Consume todas las ventanas restantes hacia col 1
         for (let i = 0; i < count - 2; i++) {
-            consumeWindowIntoColumn();
+            consumeWindowIntoColumn()
         }
     }
 
     function _applyMasterRight(count): void {
-        if (count < 2)
-            return;
+        if (count < 2) return
         // Stack en col 0, Master en col 1 (50%)
         // Primero: consumir todas excepto la última en col 0
-        focusColumnFirst();
+        focusColumnFirst()
         for (let i = 0; i < count - 2; i++) {
-            consumeWindowIntoColumn();
+            consumeWindowIntoColumn()
         }
         // Ahora tenemos 2 columnas: stack (col 0) y master (col 1)
-        focusColumnRight();
-        setColumnWidth("50%");
+        focusColumnRight()
+        setColumnWidth("50%")
     }
 
     function _applyColumns(count): void {
-        if (count < 1)
-            return;
-        const width = Math.floor(100 / count) + "%";
-        focusColumnFirst();
+        if (count < 1) return
+        const width = Math.floor(100 / count) + "%"
+        focusColumnFirst()
         for (let i = 0; i < count; i++) {
-            setColumnWidth(width);
-            focusColumnRight();
+            setColumnWidth(width)
+            focusColumnRight()
         }
     }
 
     function _applyMonocle(count): void {
-        if (count < 1)
-            return;
-        focusColumnFirst();
-        setColumnWidth("100%");
+        if (count < 1) return
+        focusColumnFirst()
+        setColumnWidth("100%")
         for (let i = 0; i < count - 1; i++) {
-            consumeWindowIntoColumn();
+            consumeWindowIntoColumn()
         }
     }
 
     function promoteToMaster(): void {
         if (currentLayout === "master-left") {
-            moveColumnToFirst();
+            moveColumnToFirst()
         } else if (currentLayout === "master-right") {
-            moveColumnToLast();
+            moveColumnToLast()
         }
     }
+
 }

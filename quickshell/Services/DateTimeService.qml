@@ -1,11 +1,10 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
-
 import QtQuick
 import Quickshell
 import Quickshell.Io
 
-import qs.Common
+import qs.Modules.Common
 
 /**
  * A nice wrapper for date and time strings.
@@ -13,19 +12,22 @@ import qs.Common
 Singleton {
     property var clock: SystemClock {
         id: clock
-        precision: SystemClock.Seconds
+        precision: {
+            if ((Config.options?.time?.secondPrecision ?? false) || GlobalStates.screenLocked)
+                return SystemClock.Seconds;
+            return SystemClock.Minutes;
+        }
     }
-    
-    property string time: Qt.locale().toString(clock.date, "hh:mm:ss")
-    property string shortTime: Qt.locale().toString(clock.date, Config.options?.time.shortFormat ?? "hh:mm")
+    property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
-    property string date: Qt.locale().toString(clock.date, Config.options?.time.dateWithYearFormat ?? "dd/MM/yyyy")
-    property string longDate: Qt.locale().toString(clock.date, "d MMMM, dddd")
-    property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dddd, MMMM dd")
+    property string date: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
+    property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dd MMMM yyyy")
     property string uptime: "0h, 0m"
 
     Timer {
-        interval: 10
+        triggeredOnStart: true
+        // Uptime doesn't change fast - 60s updates are sufficient and reduce I/O
+        interval: 60000
         running: true
         repeat: true
         onTriggered: {
@@ -47,7 +49,6 @@ Singleton {
             if (minutes > 0 || !formatted)
                 formatted += `${formatted ? ", " : ""}${minutes}m`;
             uptime = formatted;
-            interval = Config.options?.resources?.updateInterval ?? 3000;
         }
     }
 

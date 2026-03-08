@@ -4,21 +4,27 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-import qs.Common
+import qs.Modules.Common
 
 Singleton {
     id: root
 
     property var translations: ({})
-    property var availableLanguages: ["pt_BR"]
+    property var generatedTranslations: ({})
+    property var availableLanguages: ["en_US"]
     property var availableGeneratedLanguages: []
+    property var allAvailableLanguages: {
+        const combined = new Set([...root.availableLanguages, ...root.availableGeneratedLanguages]);
+        return Array.from(combined).sort();
+    }
     property bool isScanning: scanLanguagesProcess.running
     property bool isLoading: false
     property string translationKeepSuffix: "/*keep*/"
-    property string translationsDir: Quickshell.shellPath("Translations")
+    property string translationsDir: Quickshell.shellPath("translations")
+    property string generatedTranslationsDir: Directories.shellConfig + "/translations"
 
     property string languageCode: {
-        var configLang = Config?.options.language.ui ?? "auto";
+        var configLang = Config.options?.language?.ui ?? "auto";
 
         if (configLang !== "auto")
             return configLang;
@@ -34,10 +40,20 @@ Singleton {
         }
     }
 
+    TranslationScanner {
+        id: scanGeneratedLanguagesProcess
+        translationsDir: root.generatedTranslationsDir
+        onLanguagesScanned: (languages) => {
+            root.availableGeneratedLanguages = [...languages];
+        }
+    }
+
     onLanguageCodeChanged: {
-        console.info("[TranslationService] Language changed to", root.languageCode);
+        print("[TranslationService] Language changed to", root.languageCode);
         translationFileView.languageCode = root.languageCode;
+        generatedTranslationFileView.languageCode = root.languageCode;
         translationFileView.reread();
+        generatedTranslationFileView.reread();
     }
 
     TranslationReader {
@@ -50,15 +66,26 @@ Singleton {
         }
     }
 
+    TranslationReader {
+        id: generatedTranslationFileView
+        translationsDir: root.generatedTranslationsDir
+        languageCode: root.languageCode
+        isGenerated: true
+        onContentLoaded: (data) => {
+            root.generatedTranslations = data;
+            root.isLoading = false;
+        }
+    }
+
     function tr(text) {
         // Special cases
         if (!text) return "";
         var key = text.toString();
-        if (root.isLoading || !root?.translations?.hasOwnProperty(key))
+        if (root.isLoading || (!root?.translations?.hasOwnProperty(key) && !root?.generatedTranslations?.hasOwnProperty(key)))
             return key;
         
         // Normal cases
-        var translation = root.translations[key] || key;
+        var translation = root.translations[key] || root.generatedTranslations[key] || key;
         // print(key, "-> [", root.translations[key], root.generatedTranslations[key], key, "] ->", translation);
         if (translation.endsWith(root.translationKeepSuffix)) {
             translation = translation.substring(0, translation.length - root.translationKeepSuffix.length).trim();
@@ -71,8 +98,8 @@ Singleton {
         required property string translationsDir
         signal languagesScanned(var languages)
 
-        command: ["find", translationScanner.translationsDir, "-name", "*.json", "-exec", "basename", "{}", ".json", ";"]
-        running: true
+        command: ["/usr/bin/find", translationScanner.translationsDir, "-name", "*.json", "-exec", "/usr/bin/basename", "{}", ".json", ";"]
+        running: false
 
         stdout: StdioCollector {
             id: languagesCollector
@@ -85,7 +112,26 @@ Singleton {
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
-                translationScanner.languagesScanned(["pt_BR"]);
+                translationScanner.languagesScanned(["en_US"]);
+            }
+        }
+    }
+
+    Timer {
+        id: scanDefer
+        interval: 600
+        repeat: false
+        onTriggered: {
+            scanLanguagesProcess.running = true
+            scanGeneratedLanguagesProcess.running = true
+        }
+    }
+
+    Connections {
+        target: Config
+        function onReadyChanged() {
+            if (Config.ready) {
+                scanDefer.start()
             }
         }
     }
@@ -94,9 +140,16 @@ Singleton {
         id: translationReader
         required property string translationsDir
         property string languageCode: root.languageCode
+        property bool isGenerated: false
         signal contentLoaded(var data)
 
         function reread() { // Proper reload in case the file was incorrect before
+            const langs = translationReader.isGenerated ? root.availableGeneratedLanguages : root.availableLanguages;
+            if (!(langs ?? []).includes(translationReader.languageCode)) {
+                translationReader.path = "";
+                translationReader.contentLoaded({});
+                return;
+            }
             translationReader.path = "";
             translationReader.path = `${translationReader.translationsDir}/${translationReader.languageCode}.json`;
             translationReader.reload();
@@ -110,7 +163,7 @@ Singleton {
                 var jsonData = JSON.parse(textContent);
                 translationReader.contentLoaded(jsonData);
             } catch (e) {
-                console.error("[TranslationService] Failed to load translations:", e);
+                console.log("[TranslationService] Failed to load translations:", e);
                 translationReader.contentLoaded({});
             }
         }

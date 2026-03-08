@@ -13,13 +13,15 @@ import qs.Modules.Linux.RightSidebar
 import qs.Modules.Linux.WallpaperSelector
 
 Scope {
-    PanelLoader {
+    /* PanelLoader {
         component: Background {}
     }
+    */
     PanelLoader {
         extraCondition: !Config.options.bar.vertical
         component: Bar {}
     }
+    /*
     PanelLoader {
         component: NotificationPopup {}
     }
@@ -32,13 +34,15 @@ Scope {
     PanelLoader {
         component: Polkit {}
     }
+    */
     PanelLoader {
         component: LeftSidebar {}
     }
+    /*
     PanelLoader {
         component: RightSidebar {}
     }
     PanelLoader {
         component: WallpaperSelector {}
-    }
+    } */
 }

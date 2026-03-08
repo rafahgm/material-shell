@@ -495,6 +495,10 @@ Singleton {
                     property bool showVolume: true
                     property bool showBrightness: true
                 }
+
+                property JsonObject ytMusic: JsonObject {
+                    property bool enable: true
+                }
             }
 
             property JsonObject screenRecord: JsonObject {

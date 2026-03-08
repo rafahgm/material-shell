@@ -137,7 +137,7 @@ WindowDialog {
                 leftMargin: 4
                 rightMargin: 4
             }
-            // text: Translation.tr("Brightness")
+            // text: TranslationService.tr("Brightness")
             value: root.brightnessMonitor.brightness
             onMoved: root.brightnessMonitor.setBrightness(value)
         }

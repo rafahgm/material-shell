@@ -8,193 +8,84 @@ import qs.Services
 import qs.Common
 import qs.Common.Widgets
 
-Scope { // Scope
+Scope {
     id: root
-    property bool detach: false
-    property bool pin: false
-    property Component contentComponent: LeftSidebarContent {}
-    property Item sidebarContent
+    property int sidebarWidth: Appearance.sizes.sidebarWidth
 
-    function toggleDetach() {
-        root.detach = !root.detach;
-    }
+    PanelWindow {
+        id: sidebarRoot
+        visible: GlobalStates.sidebarLeftOpen
 
-    Process { // Dodge cursor away, pin, move cursor back
-        id: pinWithFunnyHyprlandWorkaroundProc
-        property var hook: null
-        property int cursorX;
-        property int cursorY;
-        function doIt() {
-            command = ["hyprctl", "cursorpos"]
-            hook = (output) => {
-                cursorX = parseInt(output.split(",")[0]);
-                cursorY = parseInt(output.split(",")[1]);
-                doIt2();
-            }
-            running = true;
+        function hide() {
+            GlobalStates.sidebarLeftOpen = false
         }
-        function doIt2(output) {
-            command = ["bash", "-c", "hyprctl dispatch movecursor 9999 9999"];
-            hook = () => {
-                doIt3();
-            }
-            running = true;
+
+        exclusiveZone: 0
+        implicitWidth: screen?.width ?? 1920
+        WlrLayershell.namespace: "quickshell:sidebarLeft"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+        color: "transparent"
+
+        anchors {
+            top: true
+            left: true
+            bottom: true
+            right: true
         }
-        function doIt3(output) {
-            root.pin = !root.pin;
-            command = ["bash", "-c", `sleep 0.01; hyprctl dispatch movecursor ${cursorX} ${cursorY}`];
-            hook = null
-            running = true;
-        }
-        stdout: StdioCollector {
-            onStreamFinished: {
-                pinWithFunnyHyprlandWorkaroundProc.hook(text);
+
+        MouseArea {
+            id: backdropClickArea
+            anchors.fill: parent
+            onClicked: mouse => {
+                const localPos = mapToItem(sidebarContentLoader, mouse.x, mouse.y)
+                if (localPos.x < 0 || localPos.x > sidebarContentLoader.width
+                        || localPos.y < 0 || localPos.y > sidebarContentLoader.height) {
+                    sidebarRoot.hide()
+                }
             }
         }
-    }
 
-    function togglePin() {
-        if (!root.pin) pinWithFunnyHyprlandWorkaroundProc.doIt()
-        else root.pin = !root.pin;
-    }
-
-    Component.onCompleted: {
-        root.sidebarContent = contentComponent.createObject(null, {
-            "scopeRoot": root,
-        });
-        sidebarLoader.item.contentParent.children = [root.sidebarContent];
-    }
-
-    onDetachChanged: {
-        if (root.detach) {
-            sidebarContent.parent = null; // Detach content from sidebar
-            sidebarLoader.active = false; // Unload sidebar
-            detachedSidebarLoader.active = true; // Load detached window
-            detachedSidebarLoader.item.contentParent.children = [sidebarContent];
-        } else {
-            sidebarContent.parent = null; // Detach content from window
-            detachedSidebarLoader.active = false; // Unload detached window
-            sidebarLoader.active = true; // Load sidebar
-            sidebarLoader.item.contentParent.children = [sidebarContent];
-        }
-    }
-
-    Loader {
-        id: sidebarLoader
-        active: true
-        
-        sourceComponent: PanelWindow { // Window
-            id: panelWindow
-            visible: GlobalStates.sidebarLeftOpen
-            
-            property bool extend: false
-            property real sidebarWidth: panelWindow.extend ? Appearance.sizes.sidebarWidthExtended : Appearance.sizes.sidebarWidth
-            property var contentParent: sidebarLeftBackground
-
-            function hide() {
-                GlobalStates.sidebarLeftOpen = false
-            }
-
-            exclusionMode: ExclusionMode.Normal
-            exclusiveZone: root.pin ? sidebarWidth : 0
-            implicitWidth: Appearance.sizes.sidebarWidthExtended + Appearance.sizes.elevationMargin
-            WlrLayershell.namespace: "quickshell:sidebarLeft"
-            // Hyprland 0.49: OnDemand is Exclusive, Exclusive just breaks click-outside-to-close
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
-            color: "transparent"
-
+        Loader {
+            id: sidebarContentLoader
+            active: GlobalStates.sidebarLeftOpen || (Config?.options?.sidebar?.keepLeftSidebarLoaded ?? true)
             anchors {
-                top: true
-                left: true
-                bottom: true
+                top: parent.top
+                left: parent.left
+                bottom: parent.bottom
+                margins: Appearance.sizes.gapsOut
+                rightMargin: Appearance.sizes.elevationMargin
             }
+            width: sidebarWidth - Appearance.sizes.gapsOut - Appearance.sizes.elevationMargin
+            height: parent.height - Appearance.sizes.gapsOut * 2
 
-            mask: Region {
-                item: sidebarLeftBackground
-            }
-
-            onVisibleChanged: {
-                if (visible) {
-                    GlobalFocusService.addDismissable(panelWindow);
-                } else {
-                    GlobalFocusService.removeDismissable(panelWindow);
-                }
-            }
-            Connections {
-                target: GlobalFocusService
-                function onDismissed() {
-                    panelWindow.hide();
-                }
-            }
-
-            // Content
-            StyledRectangularShadow {
-                target: sidebarLeftBackground
-                radius: sidebarLeftBackground.radius
-            }
-            Rectangle {
-                id: sidebarLeftBackground
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.topMargin: Appearance.sizes.gapsOut
-                anchors.leftMargin: Appearance.sizes.gapsOut
-                width: panelWindow.sidebarWidth - Appearance.sizes.gapsOut - Appearance.sizes.elevationMargin
-                height: parent.height - Appearance.sizes.gapsOut * 2
-                color: Appearance.colors.colLayer0
-                border.width: 1
-                border.color: Appearance.colors.colLayer0Border
-                radius: Appearance.rounding.screenRounding
-
-                Behavior on width {
-                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                }
-
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Escape) {
-                        panelWindow.hide();
-                    }
-                    if (event.modifiers === Qt.ControlModifier) {
-                        if (event.key === Qt.Key_O) {
-                            panelWindow.extend = !panelWindow.extend;
-                        } else if (event.key === Qt.Key_D) {
-                            root.toggleDetach();
-                        } else if (event.key === Qt.Key_P) {
-                            root.togglePin();
-                        }
-                        event.accepted = true;
+            // Simple slide animation using transform (GPU-accelerated)
+            property bool animating: false
+            transform: Translate {
+                x: GlobalStates.sidebarLeftOpen ? 0 : -30
+                Behavior on x {
+                    NumberAnimation {
+                        duration: 150
+                        easing.type: Easing.OutCubic
+                        onRunningChanged: sidebarContentLoader.animating = running
                     }
                 }
             }
-        }
-    }
-
-    Loader {
-        id: detachedSidebarLoader
-        active: false
-
-        sourceComponent: FloatingWindow {
-            id: detachedSidebarRoot
-            property var contentParent: detachedSidebarBackground
-            color: "transparent"
-
-            visible: GlobalStates.sidebarLeftOpen
-            onVisibleChanged: {
-                if (!visible) GlobalStates.sidebarLeftOpen = false;
+            opacity: GlobalStates.sidebarLeftOpen ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
             }
-            
-            Rectangle {
-                id: detachedSidebarBackground
-                anchors.fill: parent
-                color: Appearance.colors.colLayer0
 
-                Keys.onPressed: (event) => {
-                    if (event.modifiers === Qt.ControlModifier) {
-                        if (event.key === Qt.Key_D) {
-                            root.toggleDetach();
-                        }
-                        event.accepted = true;
-                    }
+            focus: GlobalStates.sidebarLeftOpen
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Escape) {
+                    sidebarRoot.hide();
                 }
+            }
+
+            sourceComponent: LeftSidebarContent {
+                screenWidth: sidebarRoot.screen?.width ?? 1920
+                screenHeight: sidebarRoot.screen?.height ?? 1080
+                panelScreen: sidebarRoot.screen ?? null
             }
         }
     }
@@ -203,52 +94,15 @@ Scope { // Scope
         target: "sidebarLeft"
 
         function toggle(): void {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen
+            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
         }
 
         function close(): void {
-            GlobalStates.sidebarLeftOpen = false
+            GlobalStates.sidebarLeftOpen = false;
         }
 
         function open(): void {
-            GlobalStates.sidebarLeftOpen = true
-        }
-    }
-
-    GlobalShortcut {
-        name: "sidebarLeftToggle"
-        description: "Toggles left sidebar on press"
-
-        onPressed: {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
-        }
-    }
-
-    GlobalShortcut {
-        name: "sidebarLeftOpen"
-        description: "Opens left sidebar on press"
-
-        onPressed: {
             GlobalStates.sidebarLeftOpen = true;
         }
     }
-
-    GlobalShortcut {
-        name: "sidebarLeftClose"
-        description: "Closes left sidebar on press"
-
-        onPressed: {
-            GlobalStates.sidebarLeftOpen = false;
-        }
-    }
-
-    GlobalShortcut {
-        name: "sidebarLeftToggleDetach"
-        description: "Detach left sidebar into a window/Attach it back"
-
-        onPressed: {
-            root.detach = !root.detach;
-        }
-    }
-
 }

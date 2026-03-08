@@ -31,7 +31,7 @@ Singleton {
     property string booruDownloads: FileUtils.trimFileProtocol(Directories.pictures  + "/booru")
     property string booruDownloadsNsfw: FileUtils.trimFileProtocol(Directories.pictures + "/booru/nsfw")
     property string latexOutput: FileUtils.trimFileProtocol(`${Directories.cache}/media/latex`)
-    property string shellConfig: FileUtils.trimFileProtocol(`${Directories.config}/shell`)
+    property string shellConfig: FileUtils.trimFileProtocol(`${Directories.config}/material-shell`)
     property string shellConfigName: "config.json"
     property string shellConfigPath: `${Directories.shellConfig}/${Directories.shellConfigName}`
 	property string todoPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.json`)

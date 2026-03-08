@@ -1,4 +1,5 @@
 import QtQuick
+
 import qs.Services
 import qs.Common
 import qs.Common.Widgets
@@ -7,11 +8,6 @@ RippleButton {
     id: root
 
     property bool showPing: false
-
-    property bool aiChatEnabled: Config.options.policies.ai !== 0
-    property bool translatorEnabled: Config.options.sidebar.translator.enable
-    property bool animeEnabled: Config.options.policies.weeb !== 0
-    visible: aiChatEnabled || translatorEnabled || animeEnabled
 
     property real buttonPadding: 5
     implicitWidth: distroIcon.width + buttonPadding * 2
@@ -29,7 +25,7 @@ RippleButton {
     }
 
     Connections {
-        target: AiService
+        target: Ai
         function onResponseFinished() {
             if (GlobalStates.sidebarLeftOpen) return;
             root.showPing = true;
@@ -37,7 +33,15 @@ RippleButton {
     }
 
     Connections {
-        target: BooruService
+        target: Booru
+        function onResponseFinished() {
+            if (GlobalStates.sidebarLeftOpen) return;
+            root.showPing = true;
+        }
+    }
+
+    Connections {
+        target: Wallhaven
         function onResponseFinished() {
             if (GlobalStates.sidebarLeftOpen) return;
             root.showPing = true;
@@ -56,7 +60,7 @@ RippleButton {
         anchors.centerIn: parent
         width: 19.5
         height: 19.5
-        source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfoService.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
+        source: (Config.options?.bar?.topLeftIcon ?? 'distro') == 'distro' ? SystemInfo.distroIcon : `${Config.options?.bar?.topLeftIcon ?? 'distro'}-symbolic`
         colorize: true
         color: Appearance.colors.colOnLayer0
 

@@ -89,7 +89,6 @@ Item {
             }
 
             ActiveWindow {
-                visible: root.verbose
                 Layout.leftMargin: 10 + (leftSidebarButton.visible ? 0 : Appearance.rounding.screenRounding)
                 Layout.rightMargin: Appearance.rounding.screenRounding
                 Layout.fillWidth: true

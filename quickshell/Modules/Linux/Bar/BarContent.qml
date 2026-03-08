@@ -17,6 +17,7 @@ import qs.Modules.Linux.Bar.Components.Resources
 import qs.Modules.Linux.Bar.Components.Clock
 import qs.Modules.Linux.Bar.Components.SysTray
 import qs.Modules.Linux.Bar.Components.Weather
+import qs.Modules.Linux.Bar.Components.TimerIndicator
 
 Item { // Bar content region
     id: root
@@ -573,14 +574,9 @@ Item { // Bar content region
             }
 
             // Timer indicator
-            // TimerIndicator {
-            //     Layout.alignment: Qt.AlignVCenter
-            // }
-
-            // iNiR shell update indicator
-            // ShellUpdateIndicator {
-            //     Layout.alignment: Qt.AlignVCenter
-            // }
+            TimerIndicator {
+                Layout.alignment: Qt.AlignVCenter
+            }
 
             Item {
                 Layout.fillWidth: true

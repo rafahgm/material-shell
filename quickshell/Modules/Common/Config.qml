@@ -109,7 +109,7 @@ Singleton {
                 "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners", "iiSessionScreen",
                 "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar", "iiWallpaperSelector", "iiClipboard", "iiShellUpdate"
             ]
-            property string panelFamily: "ii" // "ii" or "waffle"
+            property string panelFamily: "linux" // "ii" or "waffle"
             property bool familyTransitionAnimation: true // Show animated overlay when switching families
 
             property JsonObject policies: JsonObject {

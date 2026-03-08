@@ -1,0 +1,57 @@
+import QtQuick
+
+import qs.Services
+import qs.Modules.Common
+import qs.Modules.Common.Functions
+import qs.Modules.Common.Widgets
+import qs.Modules.Common.Widgets.WidgetCanvas
+
+AbstractBackgroundWidget {
+    id: root
+
+    configEntryName: "weather"
+
+    implicitHeight: backgroundShape.implicitHeight
+    implicitWidth: backgroundShape.implicitWidth
+
+    StyledDropShadow {
+        target: backgroundShape
+    }
+
+    MaterialShape {
+        id: backgroundShape
+        anchors.fill: parent
+        shape: MaterialShape.Shape.Pill
+        color: Appearance.colors.colPrimaryContainer
+        implicitSize: 200
+
+        StyledText {
+            font {
+                pixelSize: 80
+                family: Appearance.font.family.expressive
+                weight: Font.Medium
+            }
+            color: Appearance.colors.colPrimary
+            text: Weather.data?.temp.substring(0,Weather.data?.temp.length - 1) ?? "--°"
+            anchors {
+                right: parent.right
+                top: parent.top
+                rightMargin: 20
+                topMargin: 24
+            }
+        }
+
+        MaterialSymbol {
+            iconSize: 80
+            color: Appearance.colors.colOnPrimaryContainer
+            text: Icons.getWeatherIcon(Weather.data?.wCode, Weather.isNightNow()) ?? "cloud"
+            anchors {
+                left: parent.left
+                bottom: parent.bottom
+
+                leftMargin: 20
+                bottomMargin: 24
+            }
+        }
+    }
+}

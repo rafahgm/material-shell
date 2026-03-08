@@ -171,7 +171,7 @@ Item { // Player instance - Old style design
             id: auroraWallpaper
             anchors.fill: parent
             visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
-            source: Wallpapers.effectiveWallpaperUrl
+            source: WallpapersService.effectiveWallpaperUrl
             fillMode: Image.PreserveAspectCrop
             cache: true
             asynchronous: true

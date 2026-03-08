@@ -264,7 +264,7 @@ Item { // Notification item area
 
                             NotificationActionButton {
                                 Layout.fillWidth: true
-                                buttonText: Translation.tr("Close")
+                                buttonText: TranslationService.tr("Close")
                                 urgency: notificationObject?.urgency ?? NotificationUrgency.Normal
                                 implicitWidth: (!notificationObject?.actions || notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
                                     (contentItem.implicitWidth + leftPadding + rightPadding)

@@ -30,14 +30,14 @@ Singleton {
         property bool wallpaperIsVideo: wallpaperPath.endsWith(".mp4") || wallpaperPath.endsWith(".webm") || wallpaperPath.endsWith(".mkv") || wallpaperPath.endsWith(".avi") || wallpaperPath.endsWith(".mov")
         property string _videoImageSource: {
             if (!wallpaperIsVideo) return ""
-            const _dep = Wallpapers.videoFirstFrames // reactive binding
-            const ff = Wallpapers.getVideoFirstFramePath(wallpaperPath)
+            const _dep = WallpapersService.videoFirstFrames // reactive binding
+            const ff = WallpapersService.getVideoFirstFramePath(wallpaperPath)
             // When first-frame becomes available, we add a cache-bust suffix so
             // ColorQuantizer reloads even if the path is identical.
             if (ff) return ff + "?ff=1"
             if (wallpaperPath) {
-                Wallpapers.ensureVideoFirstFrame(wallpaperPath)
-                const expected = Wallpapers._videoThumbDir + "/" + MD5.hash(wallpaperPath) + ".jpg"
+                WallpapersService.ensureVideoFirstFrame(wallpaperPath)
+                const expected = WallpapersService._videoThumbDir + "/" + MD5.hash(wallpaperPath) + ".jpg"
                 return expected + "?ff=0"
             }
             return ""

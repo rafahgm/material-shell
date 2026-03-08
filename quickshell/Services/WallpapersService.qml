@@ -81,8 +81,8 @@ Singleton {
 
     onEffectiveWallpaperUrlChanged: {
         if (root._debugWallpaperUrls) {
-            console.log("[Wallpapers] effectiveWallpaperPath=", root.effectiveWallpaperPath)
-            console.log("[Wallpapers] effectiveWallpaperUrl=", root.effectiveWallpaperUrl)
+            console.log("[WallpapersService] effectiveWallpaperPath=", root.effectiveWallpaperPath)
+            console.log("[WallpapersService] effectiveWallpaperUrl=", root.effectiveWallpaperUrl)
         }
     }
 
@@ -140,7 +140,7 @@ Singleton {
         root.videoFirstFrames = copy
 
         if (root._debugWallpaperUrls) {
-            console.log("[Wallpapers] Cached first-frame:", videoPath, "->", imagePath)
+            console.log("[WallpapersService] Cached first-frame:", videoPath, "->", imagePath)
         }
     }
 

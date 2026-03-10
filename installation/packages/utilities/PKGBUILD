@@ -5,9 +5,17 @@ pkgdesc='Material-Shell Basic Utilities'
 arch=(any)
 license=(None)
 depends=(
-	zen-browser-bin
+	google-chrome
 	spotify
 	visual-studio-code-bin
 	termius
 	1password
+	docker
+	docker-compose
+	docker-buildx
+	pigz
+	docker-rootless-extras
+	fzf
+	zoxide
+	fnm
 )

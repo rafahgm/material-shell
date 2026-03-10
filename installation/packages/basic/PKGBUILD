@@ -5,7 +5,6 @@ pkgdesc='Material-Shell Basic Dependencies'
 arch=(any)
 license=(None)
 depends=(
-  niri
   sddm-git
   bc
   coreutils
@@ -29,6 +28,7 @@ depends=(
   polkit-gnome
   networkmanager
   nautilus
-  xwayland-satellite
-  bun
+  # Used in install script
+  rsync
+  go-yq # https://github.com/mikefarah/yq
 )

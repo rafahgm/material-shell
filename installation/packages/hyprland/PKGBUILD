@@ -1,0 +1,11 @@
+pkgname=material-shell-hyprland
+pkgver=1.0
+pkgrel=1
+pkgdesc='Material Shell Hyprland relatated packages'
+arch=(any)
+license=(None)
+depends=(
+  hyprland
+  hyprsunset
+  wl-clipboard
+)

@@ -5,11 +5,13 @@ pkgdesc='Material Shell Screenshot and Recording Dependencies'
 arch=(any)
 license=(None)
 depends=(
+  hyprshot
   grim
   slurp
   swappy
   tesseract
   tesseract-data-eng
+  tesseract-data-por
   wf-recorder
   imagemagick
   ffmpeg

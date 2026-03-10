@@ -1,6 +1,6 @@
 pkgname=material-shell-toolkit
 pkgver=1.0
-pkgrel=2
+pkgrel=1
 pkgdesc='Material Shell Toolkit Dependencies'
 arch=(any)
 license=(None)
@@ -17,8 +17,4 @@ depends=(
   slurp
   imagemagick
   libqalculate
-  blueman
-  tesseract
-  tesseract-data-eng
-  tesseract-data-por
 )

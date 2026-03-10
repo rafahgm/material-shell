@@ -1,6 +1,6 @@
 pkgname=material-shell-fonts-themes
 pkgver=1.0
-pkgrel=5
+pkgrel=1
 pkgdesc='Material Shell Fonts and Theming Dependencies'
 arch=(any)
 license=(None)

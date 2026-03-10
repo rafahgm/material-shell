@@ -54,7 +54,7 @@ install-local-pkgbuild() {
 }
 
 # Install core dependencies from the meta-packages
-metapkgs=(./installation/packages/{audio,backlight,basic,fonts-themes,portal,screencapture,toolkit,widgets,quickshell,utilities})
+metapkgs=(./installation/packages/{audio,backlight,basic,fonts-themes,hyprland,portal,one-ui-icons,python,screencapture,toolkit,widgets,quickshell,utilities})
 
 for i in "${metapkgs[@]}"; do
   metainstallflags="--needed"

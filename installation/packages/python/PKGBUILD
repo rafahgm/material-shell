@@ -1,0 +1,15 @@
+pkgname=material-shell-python
+pkgver=1.0
+pkgrel=1
+pkgdesc='Material Shell Python Dependencies'
+arch=(any)
+license=(None)
+depends=(
+  clang
+  uv
+  gtk4
+  libadwaita
+  libsoup3
+  libportal-gtk4
+  gobject-introspection
+)

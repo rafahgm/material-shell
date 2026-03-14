@@ -28,6 +28,8 @@ depends=(
   polkit-gnome
   networkmanager
   nautilus
+  bluez
+  bluez-utils
   # Used in install script
   rsync
   go-yq # https://github.com/mikefarah/yq

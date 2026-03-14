@@ -2,11 +2,6 @@
 # This script is meant to be sourced.
 # It's not for directly running.
 
-source ./installation/packages/install-deps.sh
-
-showfun install-python-packages
-v install-python-packages
-
 function setup_user_groups() {
     if [[ -z $(getent group i2c) ]]; then
         x sudo groupadd i2c
@@ -52,6 +47,9 @@ function setup_desktop_settings(){
         dconf write /org/gnome/nautilus/window-state/initial-size "(1100, 700)" 2>/dev/null || true
     fi
 }
+
+showfun install-python-packages
+v install-python-packages
 
 showfun setup_user_groups
 v setup_user_groups

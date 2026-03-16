@@ -22,6 +22,7 @@ depends=(
   fish
   libappindicator-gtk3
   nwg-look
+  nwg-displays
   pacman-contrib
   wlsunset
   polkit
